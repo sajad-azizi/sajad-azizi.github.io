@@ -7,8 +7,8 @@ body, h1, h2, p, ul {
 body {
     font-family: 'Arial', sans-serif;
     line-height: 1.6;
-    color: #333;
-    background-color: #f4f4f4;
+    background-color: #121212; /* Dark background */
+    color: #e0e0e0; /* Lighter text for visibility */
 }
 
 header, nav, footer {
