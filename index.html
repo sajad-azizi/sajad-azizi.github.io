@@ -1,38 +1,289 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Home - Sajad</title>
-    <link rel="stylesheet" href="css/style.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sam — Research & Publications</title>
+  <meta name="description" content="Personal academic website: research, publications, CV, certifications, and contact." />
+  <style>
+    /* ===== Base / Theme ===== */
+    :root {
+      --bg: #0b0d10;         /* page background */
+      --panel: #111418;      /* cards/nav background */
+      --text: #e8edf2;       /* primary text */
+      --muted: #a7b0ba;      /* secondary text */
+      --accent: #5b9cff;     /* highlight color */
+      --accent-2: #a77bff;   /* secondary accent */
+      --border: #21262c;     /* hairlines */
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+    }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f7f9fc;
+        --panel: #ffffff;
+        --text: #0b0d10;
+        --muted: #425063;
+        --border: #e6eaf0;
+        --shadow: 0 10px 30px rgba(0, 0, 0, .08);
+      }
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      color: var(--text);
+      background: radial-gradient(1200px 600px at 100% -100%, rgba(91,156,255,.1), transparent 60%),
+                  radial-gradient(1200px 800px at -50% 50%, rgba(167,123,255,.08), transparent 60%),
+                  var(--bg);
+      line-height: 1.55;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ===== Layout ===== */
+    .container { width: min(1100px, 92%); margin: 0 auto; }
+    .stack { display: grid; gap: 18px; }
+
+    /* ===== Header / Nav ===== */
+    .skip-link {
+      position: absolute; left: -999px; top: auto; width: 1px; height: 1px; overflow: hidden;
+    }
+    .skip-link:focus { left: 16px; top: 16px; width: auto; height: auto; padding: 8px 12px; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; z-index: 9999; }
+
+    header {
+      position: sticky; top: 0; z-index: 50; backdrop-filter: blur(8px);
+      background: color-mix(in srgb, var(--panel) 86%, transparent); border-bottom: 1px solid var(--border);
+    }
+    .nav {
+      display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 64px;
+    }
+    .brand { font-weight: 700; letter-spacing: .3px; }
+    .brand small { color: var(--muted); font-weight: 500; font-size: .85rem; }
+
+    .nav ul { list-style: none; margin: 0; padding: 0; display: flex; gap: 12px; flex-wrap: wrap; }
+    .nav a {
+      display: inline-flex; align-items: center; gap: 8px; font-weight: 600; padding: 8px 12px; border-radius: 10px;
+      border: 1px solid transparent;
+    }
+    .nav a:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); border-color: color-mix(in srgb, var(--accent) 30%, transparent); text-decoration: none; }
+    .nav a.active { background: color-mix(in srgb, var(--accent) 18%, transparent); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+
+    /* ===== Sections ===== */
+    section { padding: 72px 0; scroll-margin-top: 96px; }
+    .card { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); }
+    .card.pad { padding: 28px; }
+    h1, h2, h3 { line-height: 1.25; margin: 0 0 8px; }
+    h1 { font-size: clamp(1.8rem, 2.6vw + 1rem, 2.8rem); }
+    h2 { font-size: clamp(1.35rem, 1.2vw + 1rem, 1.8rem); margin-bottom: 12px; }
+    p { margin: 0; }
+    .muted { color: var(--muted); }
+
+    /* ===== Home ===== */
+    .hero {
+      display: grid; gap: 18px; align-items: center;
+      grid-template-columns: 1.2fr .8fr;
+    }
+    .hero .tag { display: inline-block; padding: 6px 10px; border-radius: 999px; border: 1px solid var(--border); background: color-mix(in srgb, var(--accent) 8%, transparent); font-weight: 600; font-size: .9rem; }
+    .hero .bubble {
+      min-height: 220px; border-radius: 16px; border: 1px dashed var(--border);
+      background:
+        conic-gradient(from 90deg at 30% 20%, color-mix(in srgb, var(--accent) 15%, transparent), transparent),
+        conic-gradient(from 270deg at 70% 80%, color-mix(in srgb, var(--accent-2) 12%, transparent), transparent);
+    }
+    @media (max-width: 880px){ .hero { grid-template-columns: 1fr; } }
+
+    /* ===== Research ===== */
+    .split {
+      display: grid; gap: 22px; align-items: start; grid-template-columns: 1.2fr .8fr;
+    }
+    .media { position: relative; overflow: hidden; border-radius: 14px; border: 1px solid var(--border); background: #0d1117; min-height: 260px; }
+    .media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .media .fallback { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-weight: 600; font-size: .95rem; }
+    @media (max-width: 980px){ .split { grid-template-columns: 1fr; } }
+
+    /* ===== Publications ===== */
+    .pub-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+    .pub-item { border: 1px solid var(--border); border-radius: 12px; padding: 16px; background: color-mix(in srgb, var(--panel) 92%, transparent); }
+    .pub-title { font-weight: 700; }
+    .pub-meta { color: var(--muted); font-size: .95rem; }
+
+    /* ===== Certifications ===== */
+    .certs { display: grid; gap: 14px; }
+    .cert { display: grid; gap: 12px; grid-template-columns: 1fr auto; align-items: center; border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; background: color-mix(in srgb, var(--panel) 92%, transparent); }
+    .btn { appearance: none; border: 1px solid var(--border); background: var(--panel); color: var(--text); font-weight: 700; padding: 8px 12px; border-radius: 10px; cursor: pointer; }
+    .btn:hover { background: color-mix(in srgb, var(--accent) 12%, var(--panel)); border-color: color-mix(in srgb, var(--accent) 35%, var(--border)); }
+
+    /* ===== Contact ===== */
+    .contact-grid { display: grid; gap: 12px; }
+    .contact-grid a { word-break: break-word; }
+
+    /* ===== Footer ===== */
+    footer { padding: 48px 0 72px; color: var(--muted); }
+  </style>
 </head>
 <body>
-    <header>
-        <nav>
-            <ul>
-                <li><a href="index.html">Main Page</a></li>
-                <li><a href="hpc_computer.html">HPC & Computer</a></li>
-                <li><a href="physics.html">Physics</a></li>
-                <li><a href="fitness.html">Fitness</a></li>
-            </ul>
-        </nav>
-    </header>
-    <main>
-        <section class="social-media">
-            <a href="https://twitter.com/saji_azizi" target="_blank"><img src="assets/twitter-icon.png" alt="Twitter"></a>
-            <a href="https://linkedin.com/in/sajad-azizi/" target="_blank"><img src="assets/linkedin-icon.png" alt="LinkedIn"></a>
-        </section>
-        <section class="updates">
-            <h2>Latest Updates</h2>
-            <ul>
-                <li>Update one</li>
-                <li>Update two</li>
-                <!-- More updates -->
-            </ul>
-        </section>
-    </main>
-    <footer>
-        <p>Copyright © Sajad</p>
-    </footer>
+  <a href="#home" class="skip-link">Skip to content</a>
+
+  <header>
+    <div class="container nav">
+      <div class="brand">Sam <small>— Academic Website</small></div>
+      <nav aria-label="Primary">
+        <ul>
+          <li><a href="#home" class="navlink">Home</a></li>
+          <li><a href="#research" class="navlink">Research</a></li>
+          <li><a href="#publications" class="navlink">Publications</a></li>
+          <li><a href="#cv" class="navlink">CV</a></li>
+          <li><a href="#certifications" class="navlink">Certifications</a></li>
+          <li><a href="#contact" class="navlink">Contact</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main id="home" class="container stack" style="padding-top: 28px;">
+
+    <!-- ===== HOME ===== -->
+    <section aria-labelledby="home-title">
+      <div class="card pad hero">
+        <div>
+          <span class="tag">Welcome</span>
+          <h1 id="home-title">Hi, I'm Sam.</h1>
+          <p class="muted">Physicist · HPC · Attosecond science</p>
+          <div style="height:8px"></div>
+          <p><strong>Right now:</strong> Building high‑performance simulations for ultrafast/attosecond physics and supporting scientific software development.
+          <!-- Replace the sentence above with your current focus. Keep it short and specific. --></p>
+        </div>
+        <div class="bubble" aria-hidden="true"></div>
+      </div>
+    </section>
+
+    <!-- ===== RESEARCH ===== -->
+    <section id="research" aria-labelledby="research-title">
+      <div class="stack">
+        <h2 id="research-title">Research</h2>
+        <div class="split">
+          <div class="card pad">
+            <h3>Current activity</h3>
+            <p>
+              I work on <em>attosecond‑resolved</em> electron dynamics in atoms/molecules, combining strong‑field physics with
+              large‑scale HPC simulations (MPI/OpenMP/GPU) to model ultrafast processes and analyze observables from pump–probe experiments.
+              <!-- Edit this paragraph to describe your current project(s). Keep it 2–4 sentences. -->
+            </p>
+          </div>
+          <figure class="media card" aria-label="Research image">
+            <!-- Place an image file at: assets/research.jpg (or .png). The fallback text shows until the image exists. -->
+            <img src="assets/research.jpg" alt="Research visualization or lab photo" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'" />
+            <figcaption class="fallback" style="display:none">Add your image at <code>assets/research.jpg</code></figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== PUBLICATIONS ===== -->
+    <section id="publications" aria-labelledby="pubs-title">
+      <div class="stack">
+        <h2 id="pubs-title">Publications</h2>
+        <div class="card pad">
+          <ul class="pub-list">
+            <!-- TEMPLATE: Duplicate a block below per paper. Replace the placeholders. -->
+            <li class="pub-item">
+              <div class="pub-title">[Replace] Title of your paper</div>
+              <div class="pub-meta">Your Name, Co‑author · <em>Journal Name</em> (Year)</div>
+              <a href="https://doi.org/REPLACE" target="_blank" rel="noopener">View on journal/DOI</a>
+            </li>
+            <li class="pub-item">
+              <div class="pub-title">[Example] Attosecond control of electron dynamics in strong‑field ionization</div>
+              <div class="pub-meta">S. Lastname, A. Collaborator · <em>Example Journal</em> (2024)</div>
+              <a href="https://example.com" target="_blank" rel="noopener">View on journal</a>
+            </li>
+            <!-- End template -->
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== CV ===== -->
+    <section id="cv" aria-labelledby="cv-title">
+      <div class="stack">
+        <h2 id="cv-title">CV</h2>
+        <div class="card pad">
+          <p>Coming soon. <!-- You said to keep this empty for now. --></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== CERTIFICATIONS ===== -->
+    <section id="certifications" aria-labelledby="certs-title">
+      <div class="stack">
+        <h2 id="certs-title">Certifications</h2>
+        <div class="card pad certs">
+          <!--
+            HOW TO USE
+            1) Put files into: assets/certifications/
+               Accepted: .pdf .png .jpg
+            2) Update the file paths and labels below. Clicking OPEN uses target="_blank" to open in a new tab.
+          -->
+          <div class="cert">
+            <div>
+              <div style="font-weight:700">[Replace] Certification Name</div>
+              <div class="muted">Issuer · 2025</div>
+            </div>
+            <div>
+              <a class="btn" href="assets/certifications/example-certificate.pdf" target="_blank" rel="noopener">Open</a>
+            </div>
+          </div>
+
+          <div class="cert">
+            <div>
+              <div style="font-weight:700">[Example] CUDA Programming</div>
+              <div class="muted">NVIDIA · 2024</div>
+            </div>
+            <div>
+              <a class="btn" href="assets/certifications/cuda-certificate.png" target="_blank" rel="noopener">Open</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== CONTACT ===== -->
+    <section id="contact" aria-labelledby="contact-title">
+      <div class="stack">
+        <h2 id="contact-title">Contact</h2>
+        <div class="card pad contact-grid">
+          <!-- Replace placeholders with your real info -->
+          <p><strong>Name:</strong> Sam Lastname</p>
+          <p><strong>Current position:</strong> Postdoctoral Fellow (Attosecond Physics & HPC)</p>
+          <p><strong>Email:</strong> <a href="mailto:you@example.com">you@example.com</a></p>
+          <p><strong>Telephone:</strong> <a href="tel:+491234567890">+49 123 4567890</a></p>
+          <p class="muted">Location: Munich, Germany</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer>
+    <div class="container">
+      <p>© <span id="year"></span> Sam. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <script>
+    // Highlight active nav link while scrolling
+    const navlinks = Array.from(document.querySelectorAll('.navlink'));
+    const sections = navlinks.map(a => document.querySelector(a.getAttribute('href')));
+    const setActive = () => {
+      const y = window.scrollY + 110; // offset for sticky header
+      let activeIndex = 0;
+      sections.forEach((sec, i) => { if (sec && sec.offsetTop <= y) activeIndex = i; });
+      navlinks.forEach((a, i) => a.classList.toggle('active', i === activeIndex));
+    };
+    window.addEventListener('scroll', setActive, { passive: true });
+    window.addEventListener('load', setActive);
+
+    // Year in footer
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
 </body>
 </html>
