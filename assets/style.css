@@ -39,9 +39,7 @@ p{margin:0}
 .muted{color:var(--muted)}
 .hero{display:grid;gap:18px;align-items:center;grid-template-columns:1.2fr .8fr}
 .hero .tag{display:inline-block;padding:6px 10px;border-radius:999px;border:1px solid var(--border);background:color-mix(in srgb, var(--accent) 8%, transparent);font-weight:600;font-size:.9rem}
-.hero .bubble{min-height:220px;border-radius:16px;border:1px dashed var(--border);background:
-  conic-gradient(from 90deg at 30% 20%, color-mix(in srgb, var(--accent) 15%, transparent), transparent),
-  conic-gradient(from 270deg at 70% 80%, color-mix(in srgb, var(--accent2) 12%, transparent), transparent);}
+.hero .bubble{min-height:220px;border-radius:16px;border:1px dashed var(--border);}
 @media (max-width:880px){.hero{grid-template-columns:1fr}}
 .split{display:grid;gap:22px;align-items:start;grid-template-columns:1.2fr .8fr}
 .media{position:relative;overflow:hidden;border-radius:14px;border:1px solid var(--border);background:#0d1117;min-height:260px}

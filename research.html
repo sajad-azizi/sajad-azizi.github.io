@@ -25,34 +25,94 @@
       </nav>
     </div>
   </header>
-  
+
+
 <main class="container stack" style="padding-top:28px;">
   <section aria-labelledby="research-title">
     <h2 id="research-title">Research</h2>
     <div class="split">
       <div class="card pad">
-        <h3>Current activity</h3>
-        <p>
-          Attosecond photoionization time delays in molecules; theory and large-scale numerics.
-          I build and optimize HPC codes (MPI/OpenMP/GPU/SYCL/Kokkos) and develop models
-          to interpret ultrafast strong-field phenomena.
+        <!-- <h3>Current activity</h3> -->
+        <p style="text-align: justify;">
+          My research explores photoionization and ionization dynamics across
+          strong- and weak-field regimes, using laser pulses from long duration
+          down to the attosecond limit. I focus on ultrashort laser–matter
+          interactions in atoms, molecules, and solids. To model these phenomena at scale,
+          I build and optimize HPC workflows: benchmarking kernels, improving
+          energy efficiency, and minimizing host↔device (CPU↔GPU) data movement.
+          I also apply machine learning to solve inverse-mapping problems—linking
+          measured observables (e.g., electron spectra) to underlying targets such
+          as molecular potentials—and to accelerate forward simulations. Together,
+          these tools advance our ability to interpret complex ultrafast experiments
+          and design new ones.
+          <br>
+          I work closely with experimental groups, using large-scale simulations to
+          help interpret the physics behind their measurements and to test competing mechanisms.
+          HPC is central here: it allows us to reproduce key experimental signatures and strengthen
+          our interpretations. Current collaborations include experimental partners at <b>ETH Zurich</b>
+          and a theoretical collaboration with colleagues at <b>Northwest Missouri State University</b>.
         </p>
         <div style="height:12px"></div>
-        <h3>Selected projects</h3>
-        <ul>
-          <li><strong>SPION — electron–molecule scattering</strong> (C++, OpenMP, MPI, SYCL). Continuum Hartree–Fock and DFT pipeline; Numerov scattering states; GPU-SYCL optimization. <em>Source code on request.</em></li>
-          <li><strong>Coupled-channel Schrödinger equation</strong> (C++, Eigen, OpenMP, GSL). Precise bound-state calculations in 2D/3D for model molecular potentials. <em>Source code on request.</em></li>
-          <li><strong>Time-dependent Schrödinger equation</strong> (C++, MPI, OpenMP, FFTW). Full 3D TDSE via high-order Numerov; hybrid MPI–OpenMP parallelism; 10× speedups for arbitrary laser pulses. <em>Source code on request.</em></li>
-          <li><strong>Machine Learning for photoelectron spectra</strong> (Python, TensorFlow/Keras/Sklearn). Correlations between two‑photon and net zero‑photon spectra. <a href="https://github.com/sajad-azizi/deep_learning_photoelectron_spectra" target="_blank" rel="noopener">GitHub repo</a>.</li>
-        </ul>
       </div>
-      <figure class="media card" aria-label="Research image">
-        <img src="assets/research.jpg" alt="Research visualization (placeholder)" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"/>
-        <figcaption class="fallback" style="display:none">Add your image at <code>assets/research.jpg</code></figcaption>
+      <figure class="media card" aria-label="Research image" style="height:410px">
+        <img src="assets/figs/ultrafastLaser.png" alt="Research visualization (placeholder)" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"/>
       </figure>
     </div>
   </section>
 </main>
+
+
+<main class="container stack" style="padding-top:-10px; top:auto; margin-top:-100px;">
+  <section aria-labelledby="home-title">
+    <div class="card pad hero">
+      <div >
+        <h3 id="home-title">ZEPE: Zero-Energy Photoelectric Effect</h3>
+        <div style="height:8px"></div>
+        <p style="text-align: justify;">
+          In this paper, we challenge the traditional view of
+          the photoelectric effect—a fundamental concept taught in school—by showing
+          that it can behave unexpectedly when two photons are involved.
+          Typically, the photoelectron spectrum peaks at an energy that depends
+          on the photon wavelength while remaining independent of the pulse length.
+          Our results reveal that in a two-photon process, the spectrum’s peak
+          depends on the pulse length and is independent of the photon wavelength.
+          From this moment on, any analysis of the photoelectric effect must now
+          include the mechanism described in this article.
+        </p>
+          <p class="muted"><span style="font-size:2rem">&bull;</span> <a href="https://doi.org/10.1103/PhysRevLett.134.103201" target="_blank" rel="noopener">PhysRevLett.134.103201</a></p>
+      </div>
+      <div class="bubble">
+        <img src="assets/figs/zepe/fig1-sketch.png" alt="Photo of Sajad Azizi" width="350" height="200" />
+        <img src="assets/figs/zepe/fig2.png" alt="Photo of Sajad Azizi" width="350" height="150" />
+      </div>
+    </div>
+  </section>
+</main>
+
+<main class="container stack" style="padding-top:-10px; top:auto; margin-top:-100px;">
+  <section aria-labelledby="home-title">
+    <div class="card pad hero">
+      <div >
+        <h3 id="home-title">Diffraction patterns in attosecond photoionization time delay</h3>
+        <div style="height:8px"></div>
+        <p style="text-align: justify;">
+          In this paper, we introduce—for the first time—diffraction patterns in the time domain.
+          Thanks to the maturity of attosecond pulse generation, we can probe electron
+          dynamics with sub-femtosecond resolution and observe clear diffraction
+          signatures encoded in photoionization time delays.
+          These time-domain patterns are the temporal analogue of
+          the well-known diffraction structures previously observed and studied in momentum space.
+        </p>
+          <p class="muted"><span style="font-size:2rem">&bull;</span> <a href="https://arxiv.org/abs/2412.08204" target="_blank" rel="noopener">arxiv.org/abs/2412.08204</a></p>
+      </div>
+      <div class="bubble">
+        <img src="assets/figs/diffraction/fig_1.png" alt="Photo of Sajad Azizi" width="400" height="300" />
+        
+      </div>
+    </div>
+  </section>
+</main>
+
 
   <footer>
     <div class="container">
