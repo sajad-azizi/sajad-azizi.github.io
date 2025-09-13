@@ -1,6 +1,6 @@
 # Sajad Azizi — Personal Site
 
-Multi-page static site for GitHub Pages.
+Multi-page static site.
 
 ## Structure
 - index.html (Home)
@@ -13,10 +13,5 @@ Multi-page static site for GitHub Pages.
 - assets/style.css
 - assets/research.jpg (add your image)
 - assets/certifications/ (put PDFs/PNGs/JPGs here)
-
-## Deploy (GitHub Pages)
-1) Create a new repo, add these files at the root.
-2) Commit & push.
-3) In GitHub: Settings → Pages → Deploy from a branch → `main` → `/ (root)`.
 
 © 2025 Sajad Azizi.
