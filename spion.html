@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SPION — Sajad Azizi</title>
+  <meta name="description" content="SPION: electron–molecule scattering package by Sajad Azizi." />
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+  <header>
+    <div class="container nav">
+      <div class="brand">Sajad Azizi <small>— Computational Physicist</small></div>
+      <nav aria-label="Primary">
+        <ul>
+          <li><a href="index.html" class="navlink">Home</a></li>
+          <li><a href="research.html" class="navlink">Research</a></li>
+          <li><a href="publications.html" class="navlink">Publications</a></li>
+          <li><a href="spion.html" class="navlink" aria-current="page">SPION</a></li>
+          <li><a href="cv.html" class="navlink">CV</a></li>
+          <li><a href="certifications.html" class="navlink">Certifications</a></li>
+          <li><a href="contact.html" class="navlink">Contact</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+  
+<main class="container stack" style="padding-top:28px;">
+  <section aria-labelledby="spion-title">
+    <h2 id="spion-title">SPION — electron–molecule scattering & model potentials</h2>
+
+    <div class="card pad">
+      <h3>Overview</h3>
+      <p>
+        <strong>SPION</strong> is an <em>ab initio</em> electron–molecule scattering package written in modern C++ with
+        <strong>OpenMP</strong>, <strong>MPI</strong>, and <strong>SYCL</strong> acceleration. It builds a pipeline from
+        molecular electronic structure to high-accuracy continuum (scattering) states. In addition to <em>ab initio</em>
+        targets, SPION solves <strong>arbitrary 3D model potentials</strong> for both bound and continuum properties.
+      </p>
+
+      <h3>Capabilities</h3>
+      <ul>
+        <li>
+          <strong>Electron–molecule scattering (ab initio):</strong>
+          Continuum Hartree–Fock (static-exchange) with DFT pre-processing for orbital energies and coefficients;
+          high-accuracy continuum wavefunctions suitable for phase shifts and cross-section workflows.
+        </li>
+        <li>
+          <strong>Model-potential mode (arbitrary 3D V(r)):</strong>
+          accepts analytic or gridded user-supplied potentials and computes:
+          <ul>
+            <li><strong>Ground state</strong> energy and wavefunction.</li>
+            <li><strong>Excited discrete states</strong> (energies and eigenfunctions, when present).</li>
+            <li><strong>Scattering states</strong> at user-specified energies E &gt; 0.</li>
+            <li><strong>Dipole matrix elements & overlaps</strong> between initial (e.g., ground) and final states, e.g. ⟨ψ<sub>E</sub><sup>(+)</sup>|μ|ψ<sub>0</sub>⟩ and ⟨ψ<sub>E</sub><sup>(+)</sup>|ψ<sub>n</sub>⟩.</li>
+          </ul>
+        </li>
+      </ul>
+
+      <h3>Pipeline</h3>
+      <ol>
+        <li><strong>DFT pre-processing</strong> → molecular orbitals & energies.</li>
+        <li><strong>Continuum Hartree–Fock</strong> (static-exchange) setup.</li>
+        <li><strong>Numerov integration</strong> for scattering channels and robust bound-state solvers.</li>
+        <li><strong>Post-processing</strong> → observables, phase shifts, dipole matrix elements, overlaps.</li>
+      </ol>
+
+      <h3>Numerics & performance</h3>
+      <ul>
+        <li><strong>Numerov integration</strong> for partial-wave radial equations in scattering workflows.</li>
+        <li><strong>Bound-state eigenvalue search</strong>, normalization, and orthogonality checks.</li>
+        <li><strong>GPU offloading</strong> via SYCL; <strong>multicore</strong> parallelism with OpenMP; <strong>distributed</strong> runs via MPI.</li>
+      </ul>
+
+      <h3>Inputs & outputs</h3>
+      <ul>
+        <li><strong>Inputs</strong>
+          <ul>
+            <li>Ab initio mode: molecular geometry + electronic-structure data (orbitals/energies).</li>
+            <li>Model-potential mode: V(r) as a callable/analytic form or a 3D grid (uniform or rectilinear).</li>
+          </ul>
+        </li>
+        <li><strong>Outputs</strong>
+          <ul>
+            <li>Bound spectra {E<sub>n</sub>} and eigenfunctions {ψ<sub>n</sub>(r)}.</li>
+            <li>Scattering solutions ψ<sub>E</sub><sup>(+)</sup>(r) at requested energies.</li>
+            <li>Dipole matrix elements and state overlaps for transition/ionization analyses.</li>
+          </ul>
+        </li>
+      </ul>
+
+      <h3>Status &amp; availability</h3>
+      <p>
+        Actively developed. Source code available <em>on request</em>. Benchmarks, examples, and documentation will be added here.
+      </p>
+
+      <h3>Contact</h3>
+      <p>
+        For collaboration or access, email
+        <a href="mailto:azizi.dajas@gmail.com">azizi.dajas@gmail.com</a>.
+      </p>
+    </div>
+  </section>
+</main>
+
+
+  <footer>
+    <div class="container">
+      <p>© 2025 Sajad Azizi. All rights reserved.</p>
+    </div>
+  </footer>
+</body>
+</html>
