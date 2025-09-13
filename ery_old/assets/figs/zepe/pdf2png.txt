@@ -1,0 +1,2 @@
+brew install poppler
+pdftoppm -png myfile.pdf > myfile.png

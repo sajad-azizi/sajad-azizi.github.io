@@ -57,3 +57,66 @@ p{margin:0}
 .contact-grid{display:grid;gap:12px}
 footer{padding:48px 0 72px;color:var(--muted)}
 
+
+/* === Dark mode support: injected by assistant === */
+:root {
+  color-scheme: light;
+  --bg: #ffffff;
+  --fg: #0f172a;
+  --muted: #475569;
+  --panel: #f1f5f9;
+  --border: #e2e8f0;
+  --accent: #3b82f6;
+  --button-fg: #0f172a;
+  --button-bg: #e2e8f0;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0b1220;
+  --fg: #e5e7eb;
+  --muted: #94a3b8;
+  --panel: #111827;
+  --border: #1f2937;
+  --accent: #60a5fa;
+  --button-fg: #e5e7eb;
+  --button-bg: #1f2937;
+}
+
+/* Base element hooks */
+html, body {
+  background-color: var(--bg);
+  color: var(--fg);
+}
+
+/* Link color */
+a { color: var(--accent); }
+a:hover, a:focus { opacity: .9; }
+
+/* Optional: card/panel helpers if your site uses these classes */
+.card, .panel, .box, .container, .section {
+  background: var(--panel);
+  border-color: var(--border);
+}
+
+/* Floating theme toggle button */
+#theme-toggle {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  z-index: 9999;
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  font-weight: 600;
+  font-size: 14px;
+  padding: .5rem .9rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--button-bg);
+  color: var(--button-fg);
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,.15);
+}
+#theme-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* === End dark mode support === */
