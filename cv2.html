@@ -3,11 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>CV — Sajad Azizi</title>
-  <meta name="description" content="Personal academic website for Sajad Azizi." />
-  <link rel="stylesheet" href="assets/style.css" />
-  <script src="headerscript.js"></script>
-
+  <title>Career Timeline</title>
   <style>
     :root{
       --accent: #0ea5e9;   /* dot + highlight */
@@ -139,31 +135,14 @@
       .org, .meta{ color: #555; }
     }
   </style>
-  <link rel="stylesheet" href="assets/darkstyle.css" />
-
 </head>
 <body>
-  <header>
-    <button id="theme-toggle" type="button" aria-pressed="false" aria-label="Toggle dark mode">🌙 Dark mode</button>
-    <div class="container nav">
-      <div class="brand">Sajad Azizi <small>— Computational Physicist</small></div>
-      <nav aria-label="Primary">
-        <ul>
-          <li><a href="index.html" class="navlink">Home</a></li>
-          <li><a href="research.html" class="navlink">Research</a></li>
-          <li><a href="publications.html" class="navlink">Publications</a></li>
-          <li><a href="spion.html" class="navlink">SPION</a></li>
-          <li><a href="presentations.html" class="navlink">Presentations</a></li>
-          <li><a href="cv.html" class="navlink" aria-current="page">CV</a></li>
-          <li><a href="certifications.html" class="navlink">Certifications</a></li>
-          <li><a href="contact.html" class="navlink">Contact</a></li>
-        </ul>
-      </nav>
-    </div>
-  </header>
-  
-<main class="container stack" style="padding-top:28px;">
-  <h1>Brief career timeline</h1>
+  <main class="page">
+    <header class="page-header">
+      <h1>Career Timeline</h1>
+      <p class="subtitle">Concise, ATS‑friendly layout suitable for web or PDF export.</p>
+    </header>
+
     <section class="timeline" aria-label="Career timeline">
 
       <!-- Duplicate .entry blocks to add more items. Keep reverse chronological order. -->
@@ -184,9 +163,9 @@
         <div>
           <div>
             <span class="role">Postdoctoral Researcher</span>
-            <span class="org">— Max-Planck Institute for the Physics of Complex Systems (MPI-PKS), Dresden</span>
+            <span class="org">— Max Planck Institute [Institute name], [City]</span>
           </div>
-          <p class="meta">Supervisor: Prof. Dr. Jan-Michael Rost, Prof. Dr. Ulf Saalmann</p>
+          <p class="meta">Supervisor: [Prof. Full Name]</p>
           <!-- Optional details paragraph; remove if not needed -->
           <!-- <p class="details">Attosecond physics, ultrafast dynamics, and large‑scale simulations on HPC clusters.</p> -->
         </div>
@@ -197,31 +176,32 @@
         <div>
           <div>
             <span class="role">Ph.D. Researcher</span>
-            <span class="org">— Max-Planck Institute for the Physics of Complex Systems (MPI-PKS) &amp; TU-Dresden, [Dresden]</span>
+            <span class="org">— Max Planck Institute [Institute name] &amp; [University], [City]</span>
           </div>
-          <p class="meta">Thesis: “Three Aspects of Photo-ionization in Attosecond Laser Pulses” • Supervisor: Prof. Jan-Michael Rost, Prof. Ulf Saalmann</p>
+          <p class="meta">Thesis: “[Thesis Title]” • Supervisor: [Prof. Full Name]</p>
         </div>
       </article>
 
       <article class="entry" aria-label="Master of Science in Photonics">
-        <div class="when">2014–2017</div>
+        <div class="when">2017–2019</div>
         <div>
           <div>
             <span class="role">Master of Science (Photonics)</span>
-            <span class="org">— Institute for Advanced Study in Basic Science (IASBS), Zanjan, Iran</span>
+            <span class="org">— [University], [City], [Country]</span>
           </div>
           <!-- <p class="meta">Relevant coursework: [List or remove]</p> -->
         </div>
       </article>
 
     </section>
-</main>
 
-  <footer>
-    <div class="container">
-      <p>© 2025 Sajad Azizi. All rights reserved.</p>
-    </div>
-  </footer>
-  <script src="assets/footerscript.js"></script>
+    <!--
+      Quick tips:
+      • Edit text directly in the .entry blocks above.
+      • To add bullets/entries, copy an <article class="entry">…</article> block.
+      • Keep the newest item at the top for clarity.
+      • If you prefer only the organization on the right and dates on the left, no changes needed.
+    -->
+  </main>
 </body>
 </html>
