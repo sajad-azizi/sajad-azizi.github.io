@@ -39,7 +39,7 @@
         <strong>SPION</strong> is an <em>ab initio</em> electron–molecule scattering package written in modern C++ with
         <strong>OpenMP</strong>, <strong>MPI</strong>, and <strong>SYCL</strong> acceleration. It builds a pipeline from
         molecular electronic structure to high-accuracy continuum (scattering) states. In addition to <em>ab initio</em>
-        targets, SPION solves <strong>arbitrary 3D model potentials</strong> for both bound and continuum properties.
+        targets, SPION solves <strong>arbitrary 2D and 3D model potentials</strong> for both bound and continuum properties.
       </p>
       <br>
       <p>
@@ -55,7 +55,7 @@
           high-accuracy continuum wavefunctions suitable for phase shifts and cross-section workflows.
         </li>
         <li>
-          <strong>Model-potential mode (arbitrary 3D V(r)):</strong>
+          <strong>Model-potential mode (arbitrary 3D V(r) or 2D):</strong>
           accepts analytic or gridded user-supplied potentials and computes:
           <ul>
             <li><strong>Ground state</strong> energy and wavefunction.</li>
@@ -103,6 +103,10 @@
       <h3>Status &amp; availability</h3>
       <p>
         Actively developed. Source code available <em>on request</em>. Benchmarks, examples, and documentation will be added here.
+      </p>
+      <br>
+      <p>
+        Currently, it's working very well on Intel Ponte Vecchio (PVC), but trying to make it device-independent and portable.
       </p>
 
       <h3>Contact</h3>
