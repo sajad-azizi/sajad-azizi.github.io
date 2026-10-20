@@ -8,7 +8,7 @@ Multi-page static site.
 - publications.html
 - cv.html (placeholder)
 - certifications.html
-- spion.html
+- emol.html
 - contact.html
 - assets/style.css
 - assets/research.jpg (add your image)
