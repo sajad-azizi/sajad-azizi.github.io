@@ -769,7 +769,7 @@ main {
     <div class="section-header">
       <span class="section-number" aria-hidden="true">5</span>
       <div>
-        <h2 id="heading-lab">Sidebands of one field, randomly oriented molecules</h2>
+        <h2 id="heading-lab"></h2>
         <p class="section-lead">The lab-frame two-photon delay of each hole at the sidebands of one infrared field, and the difference of two holes beside its measurement, when the payload carries them.</p>
       </div>
     </div>
@@ -4704,13 +4704,6 @@ if (typeof module !== 'undefined' && module.exports) {
                 + " product of one-photon amplitudes (dashed), τcc = τR − τ1"
                 + " (dotted), each with both photons along one molecular axis x, y or z;"
                 + " plotted against the sideband energy E_f.");
-            Controls.note(twoGroup,
-                "τR Σxyz (δij/3, black diamonds): the three along-axis pair products summed with"
-                + " weights δij/3 — a molecular-frame weighting of the along-axis amplitudes, NOT the"
-                + " delay of randomly oriented molecules, which needs the six cross-polarisation"
-                + " amplitudes as well."
-                + " " + randomOrientationNote(data.twophoton));
-            Controls.note(twoGroup, twoPhotonOriginText(data));
         }
 
         const referenceGroup = Controls.group(frame.controls, "Reference");
@@ -4743,12 +4736,6 @@ if (typeof module !== 'undefined' && module.exports) {
         }
 
         // ---- plot ----
-        // What a legend cannot say, stated once above the figure: which
-        // energies are absent (the lines break there), and which dipole
-        // origin the two-photon series are about.
-        const readingLine = Controls.note(frame.plots, absentEnergiesText(data)
-                                          + (hasTwoPhoton(data) ? " " + twoPhotonOriginText(data) : ""));
-        readingLine.className = "emol-note emol-parameter-line";
         const plotDiv = element("div", "emol-plot");
         frame.plots.appendChild(plotDiv);
 
@@ -5968,7 +5955,7 @@ if (typeof module !== 'undefined' && module.exports) {
         }
         const frame = sectionFrame(root, {
             number: "Section 5",
-            title: "Sidebands of one field, randomly oriented molecules",
+            title: "",
             accent: COLOR.beta,
             lead: "The two-photon delay of each hole at the sidebands of one infrared field, averaged over"
                   + " the molecule's orientations from the nine two-photon amplitudes (the two photons"
