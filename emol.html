@@ -33,7 +33,14 @@
   <section aria-labelledby="emol-title">
     <h2 id="emol-title">eMOL — electron–molecule scattering</h2>
 
-    <div class="card pad">
+    <div class="tabs" role="tablist" aria-label="eMOL sections">
+      <button type="button" class="tab" role="tab" id="tab-overview" aria-controls="panel-overview" aria-selected="true" data-tab="overview">Overview</button>
+      <button type="button" class="tab" role="tab" id="tab-h2o" aria-controls="panel-h2o" aria-selected="false" tabindex="-1" data-tab="h2o">H<sub>2</sub>O</button>
+      <button type="button" class="tab" role="tab" id="tab-n2" aria-controls="panel-n2" aria-selected="false" tabindex="-1" data-tab="n2">N<sub>2</sub></button>
+      <button type="button" class="tab" role="tab" id="tab-no" aria-controls="panel-no" aria-selected="false" tabindex="-1" data-tab="no">NO</button>
+    </div>
+
+    <div class="tabpanel card pad" id="panel-overview" role="tabpanel" aria-labelledby="tab-overview" tabindex="0">
       <h3>Overview</h3>
       <p>
         <strong>eMOL</strong> is an <em>ab initio</em> electron–molecule scattering package written in modern C++ with
@@ -115,6 +122,21 @@
         <a href="mailto:azizi.dajas@gmail.com">azizi.dajas@gmail.com</a>.
       </p>
     </div>
+
+    <div class="tabpanel card pad" id="panel-h2o" role="tabpanel" aria-labelledby="tab-h2o" tabindex="0" hidden>
+      <h3>H<sub>2</sub>O benchmarks</h3>
+      <p class="muted">Benchmark results coming soon.</p>
+    </div>
+
+    <div class="tabpanel card pad" id="panel-n2" role="tabpanel" aria-labelledby="tab-n2" tabindex="0" hidden>
+      <h3>N<sub>2</sub> benchmarks</h3>
+      <p class="muted">Benchmark results coming soon.</p>
+    </div>
+
+    <div class="tabpanel card pad" id="panel-no" role="tabpanel" aria-labelledby="tab-no" tabindex="0" hidden>
+      <h3>NO benchmarks</h3>
+      <p class="muted">Benchmark results coming soon.</p>
+    </div>
   </section>
 </main>
 
@@ -125,5 +147,6 @@
     </div>
   </footer>
   <script src="assets/footerscript.js"></script>
+  <script src="assets/tabs.js"></script>
 </body>
 </html>
