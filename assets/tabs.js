@@ -5,6 +5,14 @@
       return document.getElementById(tab.getAttribute('aria-controls'));
     });
 
+    function loadLazyFrames(panel) {
+      if (!panel) return;
+      var frames = panel.querySelectorAll('iframe[data-src]');
+      frames.forEach(function (frame) {
+        if (!frame.getAttribute('src')) frame.setAttribute('src', frame.getAttribute('data-src'));
+      });
+    }
+
     function activate(index, focus) {
       tabs.forEach(function (tab, i) {
         var selected = i === index;
@@ -12,6 +20,7 @@
         tab.tabIndex = selected ? 0 : -1;
         if (panels[i]) panels[i].hidden = !selected;
       });
+      loadLazyFrames(panels[index]);
       if (focus) tabs[index].focus();
     }
 
@@ -40,6 +49,9 @@
       var hashIndex = tabs.findIndex(function (tab) { return tab.dataset.tab === hash; });
       if (hashIndex > -1) activate(hashIndex, false);
     }
+
+    var activeIndex = tabs.findIndex(function (tab) { return tab.getAttribute('aria-selected') === 'true'; });
+    if (activeIndex > -1) loadLazyFrames(panels[activeIndex]);
   }
 
   document.querySelectorAll('[role="tablist"]').forEach(initTabs);
