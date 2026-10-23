@@ -175,3 +175,58 @@ h2 { font-size: 23px; font-weight: 620; }
 @media (max-width: 380px) {
   .emol-body { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* Coordinate guide: paired, vector-based diagrams share the plot palette. */
+.angle-guide-link { display: inline-block; margin-top: 12px; font-size: 11px; text-underline-offset: 3px; }
+.frame-legend { display: flex; flex-wrap: wrap; gap: 8px 24px; margin: 0 0 22px; font-size: 12px; color: var(--muted); }
+.frame-legend-item { display: inline-flex; align-items: center; gap: 8px; }
+.frame-legend-item::before { content: ''; width: 20px; height: 3px; border-radius: 3px; background: var(--frame-color); }
+.frame-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.frame-figure { min-width: 0; margin: 0; overflow: hidden; background: linear-gradient(180deg, #fafcfd 0%, #fff 80%); border: 1px solid var(--line); border-radius: 12px; }
+.frame-caption { padding: 21px 24px 0; }
+.frame-caption h3 { color: var(--ink); font-size: 17px; letter-spacing: -.02em; margin: 0 0 5px; }
+.frame-caption p { color: var(--muted); font-size: 12px; line-height: 1.55; }
+.frame-drawing { display: block; width: 100%; height: auto; overflow: visible; }
+.frame-drawing text { font-family: var(--font-body); }
+.frame-axis-label { font-size: 13px; font-weight: 600; paint-order: stroke; stroke: #fff; stroke-width: 4px; stroke-linejoin: round; }
+.frame-angle-label { font-family: Georgia, 'Times New Roman', serif !important; font-size: 27px; font-style: italic; paint-order: stroke; stroke: #fff; stroke-width: 5px; }
+.frame-atom-label { font-size: 13px; font-weight: 650; }
+.frame-live-note { margin: 18px 0 24px; color: var(--muted); font-size: 12px; line-height: 1.7; }
+.frame-control-groups { display: grid; grid-template-columns: 1fr 1fr .95fr; gap: 16px; }
+.frame-controls { min-width: 0; border: 1px solid var(--line); border-radius: 10px; background: #f8fafc; padding: 18px; margin: 0; }
+.frame-controls legend { color: var(--frame-color); font-size: 12px; font-weight: 650; padding-inline: 6px; }
+.frame-control + .frame-control { margin-top: 20px; }
+.frame-control-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.frame-control label { color: var(--ink); font-size: 12px; }
+.frame-control-symbol { color: var(--frame-color); font: italic 23px Georgia, serif; margin-right: 6px; }
+.frame-value { color: var(--ink); font-size: 12px; font-variant-numeric: tabular-nums; }
+.frame-control input { display: block; width: 100%; margin: 10px 0 8px; accent-color: var(--frame-color); }
+.frame-control p, .frame-roll-note { color: var(--muted); font-size: 11px; line-height: 1.65; }
+.frame-roll-note { margin-top: 20px; border-top: 1px solid var(--line); padding-top: 15px; }
+.frame-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 20px; }
+.frame-toolbar p { color: var(--muted); font-size: 11px; }
+.frame-reset { flex: none; border: 1px solid #ccdbe4; background: white; color: var(--ink); border-radius: 7px; padding: 8px 13px; font-size: 12px; }
+.frame-reset:hover { background: #edf4f6; border-color: var(--accent); }
+.frame-formula { font-family: var(--font-mono); color: var(--ink); overflow-wrap: anywhere; }
+@media (max-width: 950px) {
+  .frame-pair { gap: 12px; }
+  .frame-caption { padding: 16px 16px 0; }
+  .frame-controls { padding: 13px; }
+  .frame-control-groups { gap: 10px; }
+}
+@media (max-width: 700px) {
+  .section-nav button:last-child { grid-column: 1 / -1; }
+  .frame-pair, .frame-control-groups { grid-template-columns: minmax(0, 1fr); }
+  .frame-caption { padding: 18px 18px 0; }
+  .frame-caption h3 { font-size: 16px; }
+  .frame-legend { gap: 8px 16px; font-size: 11px; }
+  .frame-control-groups { gap: 16px; }
+  .frame-controls { padding: 16px; }
+  .frame-toolbar { align-items: flex-start; flex-direction: column; gap: 12px; }
+}
+
+@media (max-width: 700px) {
+  .frame-axis-label { font-size: 21px; }
+  .frame-angle-label { font-size: 35px; }
+  .frame-atom-label { font-size: 18px; }
+}

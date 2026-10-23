@@ -53,6 +53,7 @@
   <button type="button" id="view-polar" role="tab" aria-controls="section-polar" aria-selected="false" tabindex="-1"><span class="nav-number">02</span>Polar cuts</button>
   <button type="button" id="view-map" role="tab" aria-controls="section-map" aria-selected="false" tabindex="-1"><span class="nav-number">03</span>Energy–angle map</button>
   <button type="button" id="view-surface" role="tab" aria-controls="section-surface" aria-selected="false" tabindex="-1"><span class="nav-number">04</span>3D distribution</button>
+  <button type="button" id="view-frames" role="tab" aria-controls="section-frames" aria-selected="false" tabindex="-1"><span class="nav-number">05</span>Frames &amp; angles</button>
 </nav>
 <noscript><p class="error">Enable JavaScript to load the interactive plots and verify the reference data.</p></noscript>
 <main id="main">
@@ -106,6 +107,18 @@
     </div>
     <div class="section-body" id="surface-root" data-builder="buildSurface3D">
       <p class="section-placeholder">Waiting for the page scripts&hellip;</p>
+    </div>
+  </section>
+
+  <section id="section-frames" class="viz-section" role="tabpanel" aria-labelledby="view-frames" tabindex="0" hidden>
+    <div class="section-header">
+      <div>
+        <h2>One molecule, two frames</h2>
+        <p class="section-lead">Follow the polarization and the outgoing electron in both coordinate systems. Move the five angles to see exactly what each one means.</p>
+      </div>
+    </div>
+    <div class="section-body" id="frames-root" data-builder="buildFrameGuide">
+      <p class="section-placeholder">Loading the angle guide&hellip;</p>
     </div>
   </section>
 
@@ -3120,6 +3133,16 @@ if (typeof module !== 'undefined' && module.exports) {
             "μ = (cos α sin β, sin α sin β, cos β):"
             + " β = 0° is z (the molecular axis); β = 90° with"
             + " α = 0° is x, with α = 90° is y.");
+        const guideLink = element("a", "angle-guide-link", "See the frames & angles →");
+        guideLink.href = "#section-frames";
+        guideLink.addEventListener("click", function (event) {
+            event.preventDefault();
+            const tab = document.getElementById("view-frames");
+            tab.click();
+            tab.focus();
+            tab.scrollIntoView({block: "nearest"});
+        });
+        group.appendChild(guideLink);
         return {alpha: alpha, beta: beta};
     }
 
@@ -4555,6 +4578,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })();
 
 </script>
+<script src="n2-frames.js"></script>
 <script>
 (function bootstrapEmolPage() {
   "use strict";
@@ -4574,7 +4598,8 @@ if (typeof module !== 'undefined' && module.exports) {
     { rootId: "curves-root", builderName: "buildEnergyCurves", label: "section 1 (energy curves)" },
     { rootId: "polar-root", builderName: "buildPolarTriptych", label: "section 2 (polar cuts)" },
     { rootId: "map-root", builderName: "buildEnergyThetaMap", label: "section 3 (energy-angle map)" },
-    { rootId: "surface-root", builderName: "buildSurface3D", label: "section 4 (3D surface)" }
+    { rootId: "surface-root", builderName: "buildSurface3D", label: "section 4 (3D surface)" },
+    { rootId: "frames-root", builderName: "buildFrameGuide", label: "frame and angle guide" }
   ];
 
   var data = window.EMOL_DATA;
