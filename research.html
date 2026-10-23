@@ -4,116 +4,153 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Research — Sajad Azizi</title>
-  <meta name="description" content="Personal academic website for Sajad Azizi." />
-  <link rel="stylesheet" href="assets/style.css" />
-  <script src="headerscript.js"></script>
-  <!--<link rel="stylesheet" href="assets/darkstyle.css" />-->
+  <meta name="description" content="Research by Sajad Azizi on short-pulse ionization, molecular photoelectron delays, phase topology and the eMOL computational framework.">
+  <link rel="stylesheet" href="assets/style.css?v=20261023-portfolio" />
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="canonical" href="https://sajad-azizi.github.io/research.html">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Sajad Azizi">
+  <meta property="og:title" content="Research — Sajad Azizi">
+  <meta property="og:description" content="Research by Sajad Azizi on short-pulse ionization, molecular photoelectron delays, phase topology and the eMOL computational framework.">
+  <meta property="og:url" content="https://sajad-azizi.github.io/research.html">
 </head>
 <body>
-  <header>
-<!--<button id="theme-toggle" type="button" aria-pressed="false" aria-label="Toggle dark mode">🌙 Dark mode</button>-->
-    <div class="container nav">
-      <div class="brand">Sajad Azizi <small>— Computational Physicist</small></div>
-      <nav aria-label="Primary">
-        <ul>
-          <li><a href="index.html" class="navlink">Home</a></li>
-          <li><a href="research.html" class="navlink" aria-current="page">Research</a></li>
-          <li><a href="publications.html" class="navlink">Publications</a></li>
-          <li><a href="emol.html" class="navlink">eMOL</a></li>
-          <li><a href="presentations.html" class="navlink">Presentations</a></li>
-          <li><a href="cv.html" class="navlink">CV</a></li>
-          <li><a href="certifications.html" class="navlink">Certifications</a></li>
-          <li><a href="contact.html" class="navlink">Contact</a></li>
-        </ul>
-      </nav>
-    </div>
-  </header>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <header class="site-header"><div class="container nav"><a class="brand" href="index.html" aria-label="Sajad Azizi — home"><span class="brand-mark" aria-hidden="true">ψ</span><span class="brand-name">Sajad Azizi</span></a><button class="menu-toggle" type="button" aria-controls="primary-navigation" aria-expanded="false" hidden>Menu</button><nav class="site-nav" id="primary-navigation" aria-label="Primary"><ul><li><a href="research.html" aria-current="page">Research</a></li><li><a href="publications.html">Publications</a></li><li><a href="emol.html">eMOL</a></li><li><a href="cv.html">CV</a></li><li><a href="contact.html">Contact</a></li></ul></nav></div></header>
 
 
-<main class="container stack" style="padding-top:-10px; top:auto; margin-top:-60px;">
-  <section aria-labelledby="research-title">
-    <h2 id="research-title">Research</h2>
-    <div class="split">
-      <div class="card pad">
-        <!-- <h3>Current activity</h3> -->
-        <p style="text-align: justify;">
-          I study photoionization across strong- and weak-field regimes with laser pulses from long durations
-          down to the attosecond limit, focusing on ultrashort interactions in atoms,
-          molecules, and solids. To scale these models, I build HPC workflows—benchmarking kernels,
-          improving energy efficiency, and minimizing CPU↔GPU data movement—and use machine learning for
-          inverse problems (linking observables like electron spectra to molecular potentials)
-          and to speedup forward simulations. These tools sharpen interpretations of ultrafast experiments and help design new ones.
-          <br>
-          I work closely with experimental teams, using large-scale simulations to test mechanisms and reproduce key signatures;
-          current partners include <b>ETH Zurich</b> (experimental) and <b>Northwest Missouri State University</b> (theory).
-        </p>
-        <div style="height:12px"></div>
+<main id="main-content" class="container page-main">
+  <div class="page-intro">
+    <p class="eyebrow">Research</p>
+    <h1>What an electron wave reveals.</h1>
+    <p class="lead">I study how short light pulses eject electrons, and how atomic and molecular potentials shape their timing, direction, and phase.</p>
+    <p class="prose">My work connects attosecond physics, molecular scattering, and scientific computing. I develop the theory and numerical tools needed to move from a molecular potential to observables that can be compared with experiment.</p>
+    <nav class="link-row research-index" aria-label="On this page">
+      <a class="text-link" href="#zepe">Short pulses</a>
+      <a class="text-link" href="#topology">Molecular phase</a>
+      <a class="text-link" href="#emol">eMOL</a>
+      <a class="text-link" href="#outlook">Future directions</a>
+      <a class="text-link" href="#computing">Scientific computing</a>
+    </nav>
+  </div>
+
+  <section id="zepe" aria-labelledby="zepe-title">
+    <div class="section-heading">
+      <span class="section-number" aria-hidden="true">01</span>
+      <div>
+        <p class="eyebrow">Short pulses &amp; negative ions</p>
+        <h2 id="zepe-title">The zero-energy photoelectric effect</h2>
       </div>
-      <figure class="media card" aria-label="Research image" style="height:370px">
-        <img src="assets/figs/ultrafastLaser.png" alt="Research visualization (placeholder)" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"/>
+    </div>
+    <div class="research-story">
+      <div class="story-copy prose">
+        <p class="status">Published · Physical Review Letters · 2025</p>
+        <p>A short light pulse can release very slow electrons from a weakly bound negative ion, even when its photon energy is well above the binding energy.</p>
+        <p>We predicted this effect for systems such as H<sup>−</sup> and O<sup>−</sup>. The outgoing electron absorbs a photon from the pulse and emits another into it, producing a low-energy peak whose scale is set by the pulse duration. This photon exchange also connects to the infrared probe step in attosecond interferometry.</p>
+        <p class="contribution"><strong>My contribution.</strong> First-author theoretical study with Ulf Saalmann and Jan-Michael Rost, building on my work on ionization with tailored laser pulses.</p>
+        <div class="link-row">
+          <a class="text-link" href="https://doi.org/10.1103/PhysRevLett.134.103201">Read the PRL paper <span aria-hidden="true">↗</span></a>
+          <a class="text-link" href="https://doi.org/10.1088/1361-6455/ac057a">Earlier work on tailored pulses <span aria-hidden="true">↗</span></a>
+        </div>
+      </div>
+      <figure class="story-figure">
+        <a href="assets/figs/zepe/fig1-sketch.png" aria-label="View the zero-energy photoelectric effect schematic at full size">
+          <img src="assets/figs/zepe/fig1-sketch.png" width="540" height="298" alt="Energy-spectrum schematic comparing long and short pulses, with absorption and emission arrows leading to a peak near zero electron energy." loading="lazy" decoding="async" />
+        </a>
+        <figcaption class="figure-caption">Photon absorption followed by emission opens a route to electrons near zero energy. Schematic from our study of the zero-energy photoelectric effect.</figcaption>
       </figure>
     </div>
   </section>
-</main>
 
+  <section id="topology" aria-labelledby="topology-title">
+    <div class="section-heading">
+      <span class="section-number" aria-hidden="true">02</span>
+      <div>
+        <p class="eyebrow">Molecular symmetry &amp; phase</p>
+        <h2 id="topology-title">Diffraction in the timing of photoemission</h2>
+      </div>
+    </div>
+    <div class="research-story">
+      <div class="story-copy prose">
+        <p class="status">Current manuscript · Submitted to Physical Review Letters</p>
+        <p>Molecular symmetry leaves signatures in both the direction and timing of an emitted electron. In my current first-author study of photodetachment from C<sub>8</sub>F<sub>8</sub><sup>−</sup>, I examine how these signatures connect to the topology of the electron wave.</p>
+        <p>Isolated amplitude zeros in the energy–angle plane support phase windings of +2π or −2π. Mirror-related zeros carry opposite windings, while analysis of scattering-matrix poles links low-energy structures to shape resonances.</p>
+        <p class="contribution"><strong>Research thread.</strong> This follows earlier work on diffraction patterns in photoionization delays using model potentials. The linked 2024 preprint and the current submitted manuscript are listed separately.</p>
+        <div class="link-row">
+          <a class="text-link" href="https://arxiv.org/abs/2412.08204">Read the model-potential preprint <span aria-hidden="true">↗</span></a>
+          <a class="text-link" href="publications.html">Publication details <span aria-hidden="true">→</span></a>
+        </div>
+      </div>
+      <figure class="story-figure">
+        <a href="assets/figs/diffraction/fig_3.png" aria-label="View the model-potential diffraction figure at full size">
+          <img src="assets/figs/diffraction/fig_3.png" width="4402" height="3461" alt="Calculated angular and momentum distributions of photoemission yield and time delay, with oscillations in their angle-averaged curves." loading="lazy" decoding="async" />
+        </a>
+        <figcaption class="figure-caption">Yield and time-delay structures in the earlier model-potential study. This figure belongs to the 2024 preprint; it is not a result from the current topology manuscript. <a href="assets/figs/diffraction/fig_3.png">View full figure</a>.</figcaption>
+      </figure>
+    </div>
+  </section>
 
-<main class="container stack" style="padding-top:-10px; top:auto; margin-top:-100px;">
-  <section aria-labelledby="home-title">
-    <div class="card pad hero">
-      <div >
-        <h3 id="home-title">ZEPE: Zero-Energy Photoelectric Effect</h3>
-        <div style="height:8px"></div>
-        <p style="text-align: justify;">
-          In this paper, we challenge the traditional view of
-          the photoelectric effect—a fundamental concept taught in school—by showing
-          that it can behave unexpectedly when two photons are involved.
-          Typically, the photoelectron spectrum peaks at an energy that depends
-          on the photon wavelength while remaining independent of the pulse length.
-          Our results reveal that in a two-photon process, the spectrum’s peak
-          depends on the pulse length and is independent of the photon wavelength.
-          From this moment on, any analysis of the photoelectric effect must now
-          include the mechanism described in this article.
-        </p>
-          <p class="muted"><span style="font-size:2rem">&bull;</span> <a href="https://doi.org/10.1103/PhysRevLett.134.103201" target="_blank" rel="noopener">PhysRevLett.134.103201</a></p>
+  <section id="emol" aria-labelledby="emol-research-title">
+    <div class="section-heading">
+      <span class="section-number" aria-hidden="true">03</span>
+      <div>
+        <p class="eyebrow">Scientific software</p>
+        <h2 id="emol-research-title">eMOL: from molecular potentials to electron waves</h2>
       </div>
-      <div class="bubble">
-        <img src="assets/figs/zepe/fig1-sketch.png" alt="Photo of Sajad Azizi" width="350" height="200" />
-        <img src="assets/figs/zepe/fig2.png" alt="Photo of Sajad Azizi" width="350" height="150" />
+    </div>
+    <div class="prose">
+      <p>I developed eMOL from scratch for molecular photoionization and photodetachment, keeping amplitudes and phase conventions accessible throughout the calculation. It combines Hartree–Fock target states and exact exchange with model potentials for correlation and polarization.</p>
+      <p>The code treats closed- and open-shell molecules, calculates one- and two-photon amplitudes, and allows independent XUV and infrared polarizations. Prescribed model potentials provide controlled tests alongside molecular calculations.</p>
+      <p class="contribution"><strong>Explore the calculations.</strong> The N<sub>2</sub> and H<sub>2</sub>O pages connect cross sections, angular distributions, and phase-sensitive observables to their molecular and laboratory frames. H<sub>2</sub>O calculations are still running; its displayed data are preliminary.</p>
+    </div>
+    <div class="link-row">
+      <a class="button" href="emol.html#n2"><span>Explore N<sub>2</sub></span> <span aria-hidden="true">→</span></a>
+      <a class="button button-secondary" href="emol.html#h2o"><span>H<sub>2</sub>O · preliminary</span> <span aria-hidden="true">→</span></a>
+      <a class="text-link" href="emol.html">Methods &amp; availability <span aria-hidden="true">→</span></a>
+    </div>
+    <div class="prose">
+      <h3>Connecting calculations with experiment</h3>
+      <p>For a study of attosecond ionization delays in unsaturated hydrocarbons with the Wörner group at ETH Zürich, I carried out the electron-scattering calculations. The work examines how orbital delocalization affects measured delays.</p>
+      <p><a class="text-link" href="https://doi.org/10.1080/00268976.2026.2659184">Read the Molecular Physics paper · equal contribution <span aria-hidden="true">↗</span></a></p>
+    </div>
+  </section>
+
+  <section id="outlook" aria-labelledby="outlook-title">
+    <div class="section-heading">
+      <span class="section-number" aria-hidden="true">04</span>
+      <div>
+        <p class="eyebrow">Future directions</p>
+        <h2 id="outlook-title">Recovering the angular phase</h2>
       </div>
+    </div>
+    <div class="prose">
+      <p class="status">Proposed research</p>
+      <p>The Eisenbud–Wigner–Smith (EWS) time delay describes how an electron wave’s phase changes with energy. I want to recover how phase changes with emission direction: an angular phase gradient, rather than a time interval.</p>
+      <p>My proposed programme asks whether direction mixing by an infrared probe can reveal phase information that electron yields and timing alone leave undetermined. A central question is how accurately the probe must be known to separate its influence from the molecule’s phase structure.</p>
+      <p>The approach starts with controlled model tests, then examines molecular data and the effects of experimental averaging near amplitude zeros. The aim is to establish both what can be recovered and where the reconstruction becomes unreliable.</p>
+    </div>
+  </section>
+
+  <section id="computing" aria-labelledby="computing-title">
+    <div class="section-heading">
+      <span class="section-number" aria-hidden="true">05</span>
+      <div>
+        <p class="eyebrow">Methods &amp; teaching</p>
+        <h2 id="computing-title">Computation that supports the physics</h2>
+      </div>
+    </div>
+    <div class="prose">
+      <p>At the Leibniz Supercomputing Centre, I work on scientific software, performance, and user support. My work includes CPU and GPU benchmarking, parallel programming with MPI, OpenMP, SYCL, and Kokkos, and understanding the cost of moving data between processors.</p>
+      <p>I also teach heterogeneous programming with Kokkos. These activities support the development of scalable molecular calculations and the practical skills needed to maintain scientific software.</p>
+    </div>
+    <div class="link-row">
+      <a class="text-link" href="https://arxiv.org/abs/2606.23265">Application performance &amp; energy study <span aria-hidden="true">↗</span></a>
+      <a class="text-link" href="presentations.html">Talks &amp; teaching <span aria-hidden="true">→</span></a>
     </div>
   </section>
 </main>
 
-<main class="container stack" style="padding-top:-10px; top:auto; margin-top:-100px;">
-  <section aria-labelledby="home-title">
-    <div class="card pad hero">
-      <div >
-        <h3 id="home-title">Diffraction patterns in attosecond photoionization time delay</h3>
-        <div style="height:8px"></div>
-        <p style="text-align: justify;">
-          In this paper, we introduce—for the first time—diffraction patterns in the time domain.
-          Thanks to the maturity of attosecond pulse generation, we can probe electron
-          dynamics with sub-femtosecond resolution and observe clear diffraction
-          signatures encoded in photoionization time delays.
-          These time-domain patterns are the temporal analogue of
-          the well-known diffraction structures previously observed and studied in momentum space.
-        </p>
-          <p class="muted"><span style="font-size:2rem">&bull;</span> <a href="https://arxiv.org/abs/2412.08204" target="_blank" rel="noopener">arxiv.org/abs/2412.08204</a></p>
-      </div>
-      <div class="bubble">
-        <img src="assets/figs/diffraction/fig_1.png" alt="Photo of Sajad Azizi" width="400" height="300" />
-        
-      </div>
-    </div>
-  </section>
-</main>
-
-
-  <footer>
-    <div class="container">
-      <p>© 2025 Sajad Azizi. All rights reserved.</p>
-    </div>
-  </footer>
-  <script src="assets/footerscript.js"></script>
+  <footer class="site-footer"><div class="container footer-inner"><div><p class="footer-name">Sajad Azizi</p><p>Attosecond physics · Molecular photoionization · Scientific computing</p></div><nav class="footer-links" aria-label="Additional links"><a href="presentations.html">Talks &amp; teaching</a><a href="certifications.html">Training</a><a href="https://github.com/sajad-azizi">GitHub ↗</a><a href="mailto:sazizi@lrz.de">Email ↗</a></nav><span>© 2026</span></div></footer>
+  <script src="assets/site.js?v=20261023-portfolio" defer></script>
 </body>
 </html>

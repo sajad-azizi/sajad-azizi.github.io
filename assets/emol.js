@@ -7,7 +7,8 @@
 
   // Each explorer reports its content height so the page has one scroll area.
   window.addEventListener('message', function (event) {
-    if (event.origin !== window.location.origin) return;
+    var localFile = window.location.protocol === 'file:' && event.origin === 'null';
+    if (event.origin !== window.location.origin && !localFile) return;
     var message = event.data;
     if (!message || typeof message.type !== 'string') return;
     var frame = frames[message.type];

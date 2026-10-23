@@ -6086,7 +6086,8 @@ if (typeof module !== 'undefined' && module.exports) {
         var height = Math.ceil(document.body.getBoundingClientRect().height);
         if (height !== lastHeight) {
           lastHeight = height;
-          window.parent.postMessage({type: "emol:h2o:resize", height: height}, location.origin);
+          window.parent.postMessage({type: "emol:h2o:resize", height: height},
+            location.protocol === "file:" ? "*" : location.origin);
         }
       }).observe(document.body);
     }

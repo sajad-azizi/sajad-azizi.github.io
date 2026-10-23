@@ -1,0 +1,72 @@
+.phase-portrait {
+  --phase-ink: #243b4a;
+  --phase-muted: #586871;
+  --phase-paper: #fbf9f4;
+  --phase-border: #dedfd8;
+  width: 100%;
+  max-width: 500px;
+  box-sizing: border-box;
+  padding: 22px 24px 18px;
+  color: var(--phase-ink);
+  background: var(--phase-paper);
+  border: 1px solid var(--phase-border);
+  border-radius: 6px;
+  font-family: inherit;
+  line-height: 1.5;
+}
+
+.phase-portrait *, .phase-portrait *::before, .phase-portrait *::after { box-sizing: border-box; }
+.phase-portrait p { margin: 0; }
+.phase-portrait__top { display: flex; gap: 12px; align-items: center; justify-content: space-between; }
+.phase-portrait__eyebrow { color: var(--phase-muted); font-size: 11px; font-weight: 600; letter-spacing: .095em; text-transform: uppercase; }
+.phase-portrait__controls { display: flex; flex-shrink: 0; gap: 4px; }
+.phase-portrait__button {
+  appearance: none;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 6px 9px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--phase-ink);
+  font: 500 19px/1 Georgia, 'Times New Roman', serif;
+  cursor: pointer;
+}
+.phase-portrait__button:hover { border-color: #b4c0bf; }
+.phase-portrait__button[aria-pressed='true'] { color: #fff; background: var(--phase-ink); border-color: var(--phase-ink); }
+.phase-portrait__button:focus-visible, .phase-portrait__details summary:focus-visible { outline: 2px solid #107d7f; outline-offset: 3px; }
+.phase-portrait__plot { display: block; width: 100%; height: auto; overflow: visible; margin: 10px 0 0; }
+.phase-portrait__grid { fill: none; stroke: #dce1dc; stroke-width: 1; }
+.phase-portrait__grid circle { stroke-dasharray: 2 5; }
+.phase-portrait__fill { fill: #243b4a; fill-opacity: .035; }
+.phase-portrait__ray { fill: none; stroke: #8f9d9f; stroke-width: 1; stroke-dasharray: 3 5; }
+.phase-portrait__angle { fill: none; stroke: #7b8b8e; stroke-width: 1; }
+.phase-portrait__point { fill: var(--phase-paper); stroke: var(--phase-ink); stroke-width: 2; }
+.phase-portrait__origin { fill: var(--phase-ink); }
+.phase-portrait__annotation text { fill: var(--phase-muted); }
+.phase-portrait__axis { font: italic 17px Georgia, 'Times New Roman', serif; }
+.phase-portrait__angle-label { font: 12px system-ui, sans-serif; }
+.phase-portrait__legend { display: grid; justify-items: center; gap: 9px; color: var(--phase-muted); font-size: 11px; text-align: center; }
+.phase-portrait__scale { width: 160px; }
+.phase-portrait__colorbar { height: 4px; border-radius: 4px; background: linear-gradient(90deg, #107d7f, #243b4a 50%, #b5653a); }
+.phase-portrait__ticks { display: flex; justify-content: space-between; margin-top: 3px; font: 11px/1.4 Georgia, 'Times New Roman', serif; }
+.phase-portrait__result { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 4px 10px; margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--phase-border); font-size: 11px; color: var(--phase-muted); }
+.phase-portrait__value { font: 17px/1.4 Georgia, 'Times New Roman', serif; font-variant-numeric: tabular-nums; color: var(--phase-ink); }
+.phase-portrait .phase-portrait__caption { margin-top: 10px; font-size: 12px; }
+.phase-portrait__details { margin-top: 11px; font-size: 11px; color: var(--phase-muted); }
+.phase-portrait__details summary { width: fit-content; cursor: pointer; text-underline-offset: 3px; }
+.phase-portrait__details summary:hover { color: var(--phase-ink); text-decoration: underline; }
+.phase-portrait__details p { margin-top: 10px; }
+.phase-portrait__formula { color: var(--phase-ink); font: 16px/1.6 Georgia, 'Times New Roman', serif; }
+.phase-portrait__sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+.phase-portrait > img { display: block; width: 100%; height: auto; }
+
+@media (max-width: 420px) {
+  .phase-portrait { padding: 16px 15px; }
+  .phase-portrait__top { gap: 8px; }
+  .phase-portrait__eyebrow { max-width: 130px; font-size: 10px; }
+  .phase-portrait__result { margin-top: 16px; }
+}
+
+/* The portrait changes only after an explicit button press. No animation is used,
+   including when the operating system requests reduced motion. */
