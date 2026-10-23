@@ -230,3 +230,16 @@ h2 { font-size: 23px; font-weight: 620; }
   .frame-angle-label { font-size: 35px; }
   .frame-atom-label { font-size: 18px; }
 }
+
+/* A running H₂O calculation is presented as a snapshot, never a completed set. */
+.dataset-status { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; margin-top: 20px; padding: 11px 14px; color: #785c27; background: #fcf6e9; border: 1px solid #eadcba; border-radius: 8px; font-size: 12px; }
+.dataset-status strong { font-weight: 650; }
+.h2o-explorer .verification { margin-top: 14px; }
+.chart-context span { font-size: inherit !important; }
+.lab-difference-caption { margin-top: 28px; }
+@media (min-width: 701px) and (max-width: 1100px) {
+  .section-nav.has-six { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 700px) {
+  .section-nav.has-six button:last-child { grid-column: auto; }
+}

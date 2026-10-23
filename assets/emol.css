@@ -3,7 +3,7 @@
   padding: 44px 0 24px;
 }
 
-.emol-page:has(#tab-n2[aria-selected="true"]) main.container {
+.emol-page:has(:is(#tab-n2, #tab-h2o)[aria-selected="true"]) main.container {
   width: min(1320px, calc(100% - 48px));
 }
 
@@ -49,11 +49,11 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, .05);
 }
 
-.emol-page #panel-n2 {
+.emol-page :is(#panel-n2, #panel-h2o) {
   min-width: 0;
 }
 
-.emol-page .n2-panel-heading {
+.emol-page :is(.n2-panel-heading, .h2o-panel-heading) {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -61,23 +61,23 @@
   margin-bottom: 18px;
 }
 
-.emol-page .n2-panel-heading h2 {
+.emol-page :is(.n2-panel-heading, .h2o-panel-heading) h2 {
   margin-bottom: 5px;
   font-size: 1.1rem;
   letter-spacing: -.02em;
 }
 
-.emol-page .n2-panel-heading h2 span {
+.emol-page :is(.n2-panel-heading, .h2o-panel-heading) h2 span {
   margin-left: 8px;
   color: var(--muted);
   font-weight: 500;
 }
 
-.emol-page .n2-panel-heading p {
+.emol-page :is(.n2-panel-heading, .h2o-panel-heading) p {
   font-size: .85rem;
 }
 
-.emol-page .n2-fullscreen {
+.emol-page :is(.n2-fullscreen, .h2o-fullscreen) {
   display: inline-flex;
   flex-shrink: 0;
   align-items: center;
@@ -94,17 +94,17 @@
   text-decoration: none;
 }
 
-.emol-page .n2-fullscreen:hover {
+.emol-page :is(.n2-fullscreen, .h2o-fullscreen):hover {
   border-color: var(--accent);
   color: var(--accent);
 }
 
-.emol-page .n2-fullscreen:focus-visible {
+.emol-page :is(.n2-fullscreen, .h2o-fullscreen):focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
 }
 
-.emol-page #panel-n2 .viz-frame {
+.emol-page :is(#panel-n2, #panel-h2o) .viz-frame {
   box-sizing: border-box;
   height: auto;
   min-height: 0;
@@ -112,7 +112,7 @@
   box-shadow: 0 6px 28px rgba(0, 0, 0, .04);
 }
 
-.emol-page #n2-explorer {
+.emol-page :is(#n2-explorer, #h2o-explorer) {
   height: 1100px;
 }
 
@@ -159,7 +159,7 @@
   }
 
   .emol-page .container,
-  .emol-page:has(#tab-n2[aria-selected="true"]) main.container {
+  .emol-page:has(:is(#tab-n2, #tab-h2o)[aria-selected="true"]) main.container {
     width: calc(100% - 28px);
   }
 
@@ -196,13 +196,13 @@
     font-size: .87rem;
   }
 
-  .emol-page .n2-panel-heading {
+  .emol-page :is(.n2-panel-heading, .h2o-panel-heading) {
     align-items: flex-start;
     flex-direction: column;
     gap: 12px;
   }
 
-  .emol-page #panel-n2 .viz-frame {
+  .emol-page :is(#panel-n2, #panel-h2o) .viz-frame {
     border-radius: 12px;
   }
 }

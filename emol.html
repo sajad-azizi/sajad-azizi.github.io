@@ -127,15 +127,16 @@
       </p>
     </div>
 
-    <div class="tabpanel card pad" id="panel-h2o" role="tabpanel" aria-labelledby="tab-h2o" tabindex="0" hidden>
-      <h3>H<sub>2</sub>O benchmarks — 1b<sub>1</sub></h3>
-      <p class="muted">
-        Interactive explorer: energy curves, polar distributions, energy&ndash;angle map, 3D surface, and
-        lab-frame view, with a built-in self-test against the reference physics.
-        <a href="assets/viz/h2o_1b1_explorer.html" target="_blank" rel="noopener">Open full-screen ↗</a>
-      </p>
+    <div class="tabpanel" id="panel-h2o" role="tabpanel" aria-labelledby="tab-h2o" tabindex="0" hidden>
+      <div class="h2o-panel-heading">
+        <div>
+          <h2>H<sub>2</sub>O benchmark <span>1b<sub>1</sub></span></h2>
+          <p class="muted">Explore photoionization cross sections and angular distributions.</p>
+        </div>
+        <a class="h2o-fullscreen" href="assets/viz/h2o_1b1_explorer.html" target="_blank" rel="noopener">Open full-screen <span aria-hidden="true">↗</span><span class="visually-hidden"> (opens in a new tab)</span></a>
+      </div>
       <div class="viz-frame">
-        <iframe title="H2O 1b1 eMOL benchmark explorer" data-src="assets/viz/h2o_1b1_explorer.html"></iframe>
+        <iframe id="h2o-explorer" title="Water H2O 1b1 photoionization benchmark explorer" height="1100" data-src="assets/viz/h2o_1b1_explorer.html"></iframe>
       </div>
     </div>
 

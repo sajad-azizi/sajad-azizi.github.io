@@ -1,14 +1,17 @@
 (function () {
   'use strict';
 
-  var frame = document.getElementById('n2-explorer');
-  if (!frame) return;
+  var frames = Object.create(null);
+  frames['emol:n2:resize'] = document.getElementById('n2-explorer');
+  frames['emol:h2o:resize'] = document.getElementById('h2o-explorer');
 
-  // The explorer reports its content height so the page has one scroll area.
+  // Each explorer reports its content height so the page has one scroll area.
   window.addEventListener('message', function (event) {
-    if (event.source !== frame.contentWindow || event.origin !== window.location.origin) return;
+    if (event.origin !== window.location.origin) return;
     var message = event.data;
-    if (!message || message.type !== 'emol:n2:resize') return;
+    if (!message || typeof message.type !== 'string') return;
+    var frame = frames[message.type];
+    if (!frame || event.source !== frame.contentWindow) return;
     if (typeof message.height !== 'number' || !Number.isFinite(message.height)) return;
 
     var height = Math.min(10000, Math.max(600, Math.ceil(message.height)));

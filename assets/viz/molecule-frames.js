@@ -1,4 +1,4 @@
-/* Coordinate guide for N₂. This illustrates the existing angle convention;
+/* Coordinate guide for N₂ and H₂O. This illustrates the existing angle convention;
    it never modifies the payload, numerical core, or any plot's settings. */
 (function () {
   'use strict';
@@ -39,7 +39,7 @@
     return node;
   }
 
-  function makeDrawing(id, label) {
+  function makeDrawing(id, label, isWater) {
     const svg = svgElement('svg', {viewBox: '0 0 500 440', role: 'img', 'aria-labelledby': id + '-title ' + id + '-description', class: 'frame-drawing'});
     svg.appendChild(svgElement('title', {id: id + '-title'}, label));
     const description = svgElement('desc', {id: id + '-description'});
@@ -95,7 +95,22 @@
       const points = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a, b]) => project(add(scale(x, a * 1.25), scale(y, b * 1.25))).join(','));
       stage.appendChild(svgElement('polygon', {points: points.join(' '), fill: COLORS.plane, 'fill-opacity': .45, stroke: '#dbe5ec', 'stroke-width': 1}));
     }
-    function molecule(z) {
+    function molecule(z, x) {
+      if (isWater) {
+        // H₂O source geometry: xz plane, 104.52° H–O–H angle, +z bisector.
+        // Schematic scale; the drawing origin is not a numerical dipole origin.
+        const halfAngle = 52.26 * RAD;
+        const hydrogens = [-1, 1].map(sign => add(scale(x, sign * .72 * Math.sin(halfAngle)), scale(z, .72 * Math.cos(halfAngle))));
+        for (const atom of hydrogens) line([0, 0, 0], atom, '#9eacb7', {'stroke-width': 7});
+        const atoms = [{point: [0, 0, 0], symbol: 'O', radius: 20, fill: '#e9bfc1', stroke: '#be7d82'},
+          ...hydrogens.map(point => ({point, symbol: 'H', radius: 13, fill: '#f6fafc', stroke: '#a4bac9'}))];
+        for (const atom of atoms) {
+          const p = project(atom.point);
+          stage.appendChild(svgElement('circle', {cx: p[0], cy: p[1], r: atom.radius, fill: atom.fill, stroke: atom.stroke}));
+          textAt(atom.point, atom.symbol, '#3c596d', 0, 5, 'frame-atom-label');
+        }
+        return;
+      }
       const a = scale(z, -.48), b = scale(z, .48);
       line(a, b, '#91a7b9', {'stroke-width': 9});
       for (const point of [a, b]) {
@@ -107,7 +122,9 @@
     return {svg, description, stage, line, arrow, textAt, arc, plane, molecule};
   }
 
-  function buildFrameGuide(root) {
+  function buildFrameGuide(root, data) {
+    const isWater = Boolean(data && data.meta && /^H2O/.test(data.meta.molecule));
+    const axisName = isWater ? 'z · angle bisector' : 'z · N–N axis';
     const state = {alpha: 30, beta: 50, gamma: 35, theta: 55, phi: 115};
     const initial = Object.assign({}, state);
     const legend = html('div', 'frame-legend');
@@ -120,7 +137,7 @@
     const pair = html('div', 'frame-pair');
     const drawings = [];
     for (const [id, title, subtitle] of [
-      ['molecular-frame', 'Molecular frame', 'The N–N bond stays on z. Both directions are measured here.'],
+      ['molecular-frame', 'Molecular frame', isWater ? 'H₂O lies in xz; z bisects H–O–H. The y axis is out of plane.' : 'The N–N bond stays on z. Both directions are measured here.'],
       ['laboratory-frame', 'Laboratory frame', 'The polarization stays on Z. The molecule is tilted.']
     ]) {
       const figure = html('figure', 'frame-figure');
@@ -128,7 +145,7 @@
       heading.appendChild(html('h3', '', title));
       heading.appendChild(html('p', '', subtitle));
       figure.appendChild(heading);
-      const drawing = makeDrawing(id, title + ' coordinate diagram');
+      const drawing = makeDrawing(id, title + ' coordinate diagram', isWater);
       figure.appendChild(drawing.svg);
       drawings.push(drawing);
       pair.appendChild(figure);
@@ -190,12 +207,12 @@
 
     const convention = html('details', 'reading-guide frame-convention');
     convention.appendChild(html('summary', '', 'Angle convention & coordinate transformation'));
-    convention.appendChild(html('p', '', 'The molecular axes are lowercase (x, y, z); laboratory axes are uppercase (X, Y, Z). The bond lies on z and linear polarization lies on Z. Here ϑ is the same polar angle called θ in the plots. All azimuths are right-handed, measured from +x toward +y.'));
+    convention.appendChild(html('p', '', 'The molecular axes are lowercase (x, y, z); laboratory axes are uppercase (X, Y, Z). ' + (isWater ? 'The molecular plane is xz, z bisects H–O–H toward the hydrogens, and y is perpendicular to the plane. ' : 'The bond lies on z. ') + 'Linear polarization lies on Z. Here ϑ is the same polar angle called θ in the plots. All azimuths are right-handed, measured from +x toward +y.'));
     convention.appendChild(html('p', 'frame-formula', 'ε̂mol = (sin β cos α, sin β sin α, cos β)'));
     convention.appendChild(html('p', 'frame-formula', 'k̂mol = (sin ϑ cos φ, sin ϑ sin φ, cos ϑ)'));
     convention.appendChild(html('p', 'frame-formula', 'R = Rz(α) Ry(β) Rz(γ)     ·     vmol = R vlab'));
     convention.appendChild(html('p', '', 'The columns of R are the laboratory axes expressed in molecular coordinates. The inverse transformation is vlab = Rᵀ vmol. The dashed X₀ direction is the laboratory X axis at γ = 0. Increasing γ rotates X₀ toward X about Z; it is a coordinate-frame roll, not an extra polarization parameter.'));
-    convention.appendChild(html('p', '', 'The photoelectron’s angles in the laboratory generally differ from ϑ and φ. Both panels show the same electron and polarization vectors expressed in different frames. Nitrogen atoms are schematic; orbital amplitudes and bond lengths are not encoded.'));
+    convention.appendChild(html('p', '', 'The photoelectron’s angles in the laboratory generally differ from ϑ and φ. Both panels show the same electron and polarization vectors expressed in different frames. ' + (isWater ? 'The H–O–H angle is 104.52°; atom sizes and lengths are schematic. The drawing places O at the origin for clarity, independently of the numerical expansion or dipole origins used by the data. The 1b₁ orbital is perpendicular to the molecular plane; orbital amplitudes are not drawn.' : 'Nitrogen atoms are schematic; orbital amplitudes and bond lengths are not encoded.')));
     root.appendChild(convention);
 
     function render() {
@@ -212,18 +229,18 @@
       const summary = 'α = ' + state.alpha + '°, β = ' + state.beta + '°, γ = ' + state.gamma + '°, ϑ = ' + state.theta + '°, φ = ' + state.phi + '°.';
       const mol = drawings[0];
       mol.stage.replaceChildren();
-      mol.description.textContent = 'Nitrogen’s bond lies along molecular z. Teal polarization has polar angle β and azimuth α; orange electron emission has polar angle ϑ and azimuth φ. ' + summary;
+      mol.description.textContent = (isWater ? 'Water lies in xz with z bisecting H–O–H. ' : 'Nitrogen’s bond lies along molecular z. ') + 'Teal polarization has polar angle β and azimuth α; orange electron emission has polar angle ϑ and azimuth φ. ' + summary;
       mol.plane(EX, EY);
       mol.arrow(scale(EX, 1.8), 'molecule', 'x', [12, 6]);
       mol.arrow(scale(EY, 1.8), 'molecule', 'y', [-12, 6]);
       mol.line(scale(EZ, -1.05), [0, 0, 0], '#9eb0bf', {'stroke-dasharray': '4 5'});
-      mol.arrow(scale(EZ, 1.85), 'molecule', compact ? 'z' : 'z · N–N axis', [0, -14]);
+      mol.arrow(scale(EZ, 1.85), 'molecule', compact ? 'z' : axisName, [0, -14]);
       for (const [v, key] of [[g.epsilon, 'polarization'], [g.electron, 'electron']]) {
         const tip = scale(v, 1.95), projection = [tip[0], tip[1], 0];
         mol.line(tip, projection, COLORS[key], {'stroke-dasharray': '4 5', opacity: .6});
         mol.line([0, 0, 0], projection, COLORS[key], {'stroke-dasharray': '4 5', opacity: .6});
       }
-      mol.molecule(EZ);
+      if (!isWater) mol.molecule(EZ, EX);
       // Polar arcs from +z; azimuth arcs are in the molecular xy plane.
       if (!polarAxis) mol.arc(t => [Math.cos(t), Math.sin(t), 0], a, .85, 'polarization', 'α', [10, 18]);
       if (!electronAxis) mol.arc(t => [Math.cos(t), Math.sin(t), 0], phi, 1.32, 'electron', 'φ', [0, 21]);
@@ -231,6 +248,8 @@
       mol.arc(t => spherical(t, phi), theta, .87, 'electron', 'ϑ', [-16, -5]);
       mol.arrow(scale(g.epsilon, 1.95), 'polarization', compact ? 'ε̂' : 'ε̂ · polarization', [28, -14]);
       mol.arrow(scale(g.electron, 1.95), 'electron', compact ? 'k̂' : 'k̂ · electron', [-10, -14]);
+
+      if (isWater) mol.molecule(EZ, EX);
 
       const lab = drawings[1];
       lab.stage.replaceChildren();
@@ -241,14 +260,15 @@
       lab.arrow(scale(EZ, 1.85), 'polarization', compact ? 'Z = ε̂' : 'Z = ε̂ · polarization', [0, -14]);
       const molZ = g.toLab(EZ);
       lab.line(scale(molZ, -1.0), [0, 0, 0], '#9eb0bf', {'stroke-dasharray': '4 5'});
-      lab.molecule(molZ);
-      lab.arrow(scale(molZ, 1.6), 'molecule', compact ? 'z' : 'z · N–N axis', [-18, -12]);
+      if (!isWater) lab.molecule(molZ, g.toLab(EX));
+      lab.arrow(scale(molZ, 1.6), 'molecule', compact ? 'z' : axisName, [-18, -12]);
       lab.arrow(scale(g.toLab(g.electron), 1.95), 'electron', compact ? 'k̂' : 'k̂ · electron', [12, -14]);
       const x0Lab = g.toLab(g.x0);
       lab.line([0, 0, 0], scale(x0Lab, 1.65), COLORS.lab, {'stroke-dasharray': '4 5', opacity: .55});
       lab.textAt(scale(x0Lab, 1.65), 'X₀', COLORS.lab, 12, -8);
       lab.arc(t => [Math.cos(t), Math.sin(t), 0], 0, 1.12, 'lab', 'γ', [4, 23], -gamma);
-      hint.textContent = 'ϑ (theta) and φ locate the electron; α and β locate the polarization. γ sets the transverse laboratory axes.'
+      if (isWater) lab.molecule(molZ, g.toLab(EX));
+      hint.textContent = 'ϑ (theta) and φ locate the electron; α and β locate the polarization. γ sets the transverse laboratory axes.' + (isWater ? ' The shaded planes are the xy and XY azimuth reference planes, respectively.' : '')
         + (electronAxis ? ' At ϑ = ' + state.theta + '°, the electron lies on z and φ is undefined.' : '')
         + (polarAxis ? ' At β = ' + state.beta + '°, polarization lies on z and α does not change its direction.' : '');
     }
