@@ -3,699 +3,66 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="light dark">
-<title>N2 3sigma_g — emol photoionization</title>
+<meta name="color-scheme" content="light">
+<meta name="description" content="Explore N₂ 3σg photoionization: energy curves, polar cuts, energy–angle maps and interactive 3D distributions.">
+<title>N₂ · 3σg photoionization — eMOL</title>
 <!--
-  emol visualization page template.
-
-  The exporter (emol_viz/export.py) substitutes six placeholders, each
-  spelled with two underscores on either side and each in ONE pass, so
-  a token inside substituted content is never substituted again.  They
-  are deliberately NOT spelled out in this comment: the exporter
-  requires every one of them to appear exactly once (the title twice:
-  the <title> and the <h1>), so a literal token here would receive a
-  second copy of Plotly.
-    TITLE        the page title (HTML-escaped by the exporter)
-    STYLE        the contents of assets/style.css
-    PAYLOAD      the JSON payload, becomes window.EMOL_DATA
-    PLOTLY_TAG   an inline script with the vendored plotly.min.js, or a
-                 CDN script tag
-    CORE_JS      the contents of assets/core.js (defines window.EmolCore)
-    SECTIONS_JS  the contents of assets/sections.js (defines the four
-                 builders: buildEnergyCurves, buildPolarTriptych,
-                 buildEnergyThetaMap, buildSurface3D)
-
-  What this page expects from the two scripts:
-    window.EmolCore.init(data)          -- once, before anything else
-    window.EmolCore.runSelfTest()  ->  {passed, worstRelative, worstCase,
-                                        tolerance, vectorCount, checkCount}
-        core.js owns the verification, not this page: besides recomputing
-        every payload.selftest vector against the Python physics it also
-        checks its own moment-matrix path against direct evaluation, its
-        polarization quadrature against elementary integrals, the
-        integrated cross sections against the channel sums, and the
-        two-photon channel-summed delay against the gated delays_*.h5
-        values.  The badge below only renders that verdict.
-    window.EmolSections.buildEnergyCurves(rootElement, data)    section 1
-    window.EmolSections.buildPolarTriptych(rootElement, data)   section 2
-    window.EmolSections.buildEnergyThetaMap(rootElement, data)  section 3
-    window.EmolSections.buildSurface3D(rootElement, data)       section 4
-        -- each receives the payload and its own empty .section-body.
+  N₂ benchmark explorer. The exported payload, bundled Plotly and numerical
+  core are preserved below. The public interface is maintained in this file
+  and n2-explorer.css. EmolCore verifies the embedded reference data before
+  the view builders run; a failure is always reported above the plots.
 -->
-<style>
-/* style.css — the page chrome of the emol visualization.
- *
- * Calm, scientific, readable.  The four sections must never be mistaken
- * for one another, so each carries its own accent colour, a large
- * number, a heading and a one-line lead, with generous space between
- * them.  Chart internals (traces, colour scales, hover) belong to
- * sections.js; this sheet styles the shell and gives every control that
- * sections.js emits one consistent look, whether or not it uses the
- * helper classes documented below.
- *
- * Helper classes sections.js may use inside a .section-body:
- *   .controls       a panel of inputs, laid out as a responsive grid
- *   .control        one label + input pair (a grid cell)
- *   .control-row    a horizontal run of controls
- *   .plot-row       a horizontal run of plots (wraps on narrow screens)
- *   .plot           one Plotly host element
- *   .plot-title     a caption above a plot, when the Plotly title is not used
- *   .note           a muted explanatory line
- *   .error          an inline failure message
- *
- * Light and dark are BOTH tuned, not flipped: the dark tokens are chosen
- * for the dark surface (prefers-color-scheme block below).
- */
-
-:root {
-  color-scheme: light dark;
-
-  --page-bg: #f5f6f8;
-  --surface: #ffffff;
-  --surface-muted: #eef1f4;
-  --ink: #1b2230;
-  --ink-secondary: #465262;
-  --ink-muted: #6a7686;
-  --line: #d5dbe3;
-  --line-strong: #b9c2cd;
-  --focus: #2563a8;
-
-  /* one accent per section, in section order */
-  --accent-curves: #2563a8;
-  --accent-polar: #b3701f;
-  --accent-map: #2b7a57;
-  --accent-surface: #7a4ea3;
-
-  --status-ok-bg: #dff3e6;
-  --status-ok-ink: #145c37;
-  --status-ok-line: #7cc79a;
-  --status-fail-bg: #b3261e;
-  --status-fail-ink: #ffffff;
-  --status-pending-bg: #fbf0d0;
-  --status-pending-ink: #6b4f00;
-  --status-pending-line: #e2c45c;
-
-  --radius: 10px;
-  --shadow: 0 1px 2px rgba(20, 30, 45, 0.06);
-  --content-width: 1440px;
-  --font-body: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --page-bg: #111417;
-    --surface: #1a1e23;
-    --surface-muted: #22272d;
-    --ink: #e7eaee;
-    --ink-secondary: #b6bec8;
-    --ink-muted: #8d97a3;
-    --line: #333a43;
-    --line-strong: #4a535e;
-    --focus: #7fb0ea;
-
-    --accent-curves: #7fb0ea;
-    --accent-polar: #e0a45a;
-    --accent-map: #6cc397;
-    --accent-surface: #b592dc;
-
-    --status-ok-bg: #16352a;
-    --status-ok-ink: #9fe0bb;
-    --status-ok-line: #2f7a55;
-    --status-fail-bg: #c0392b;
-    --status-fail-ink: #ffffff;
-    --status-pending-bg: #3a3116;
-    --status-pending-ink: #f0d27a;
-    --status-pending-line: #7a6320;
-
-    --shadow: none;
-  }
-}
-
-/* ------------------------------------------------------------------ */
-/* base                                                                */
-
-* {
-  box-sizing: border-box;
-}
-
-html {
-  background: var(--page-bg);
-}
-
-body {
-  margin: 0;
-  font-family: var(--font-body);
-  font-size: 15px;
-  line-height: 1.5;
-  color: var(--ink);
-  background: var(--page-bg);
-  -webkit-text-size-adjust: 100%;
-}
-
-h1, h2, h3 {
-  margin: 0;
-  font-weight: 600;
-  line-height: 1.25;
-  letter-spacing: -0.01em;
-}
-
-p {
-  margin: 0;
-}
-
-code, .mono {
-  font-family: var(--font-mono);
-  font-size: 0.92em;
-}
-
-a {
-  color: var(--focus);
-}
-
-/* keyboard users get an unmistakable focus ring everywhere */
-:focus-visible {
-  outline: 2px solid var(--focus);
-  outline-offset: 2px;
-}
-
-.skip-link {
-  position: absolute;
-  left: 1rem;
-  top: -3rem;
-  padding: 0.4rem 0.8rem;
-  background: var(--surface);
-  border: 1px solid var(--line-strong);
-  border-radius: 6px;
-  z-index: 10;
-}
-
-.skip-link:focus {
-  top: 0.75rem;
-}
-
-/* ------------------------------------------------------------------ */
-/* header                                                              */
-
-.page-header {
-  max-width: var(--content-width);
-  margin: 0 auto;
-  padding: 2rem 2rem 1.5rem;
-  display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
-  grid-template-areas:
-    "text badge"
-    "provenance provenance";
-  gap: 1rem 2rem;
-  align-items: start;
-}
-
-.page-header-text {
-  grid-area: text;
-}
-
-.eyebrow {
-  margin-bottom: 0.35rem;
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--ink-muted);
-}
-
-.page-header h1 {
-  font-size: 1.9rem;
-}
-
-.page-summary {
-  margin-top: 0.5rem;
-  color: var(--ink-secondary);
-  max-width: 70ch;
-}
-
-.provenance {
-  grid-area: provenance;
-  margin: 0.5rem 0 0;
-  padding: 0.9rem 1.1rem;
-  display: grid;
-  grid-template-columns: max-content minmax(0, 1fr);
-  column-gap: 1.25rem;
-  row-gap: 0.25rem;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  font-size: 0.9rem;
-}
-
-.provenance dt {
-  color: var(--ink-muted);
-}
-
-.provenance dd {
-  margin: 0;
-  color: var(--ink);
-  overflow-wrap: anywhere;
-}
-
-/* the self-test badge: pending until the check has run, then green or LOUD red */
-.selftest {
-  grid-area: badge;
-  justify-self: end;
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0.6rem;
-  max-width: 100%;
-  padding: 0.55rem 0.9rem;
-  border-radius: 999px;
-  border: 1px solid transparent;
-  font-size: 0.9rem;
-}
-
-.selftest-label {
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  font-size: 0.75rem;
-  white-space: nowrap;
-}
-
-.selftest-pending {
-  background: var(--status-pending-bg);
-  color: var(--status-pending-ink);
-  border-color: var(--status-pending-line);
-}
-
-.selftest-pass {
-  background: var(--status-ok-bg);
-  color: var(--status-ok-ink);
-  border-color: var(--status-ok-line);
-}
-
-.selftest-fail {
-  background: var(--status-fail-bg);
-  color: var(--status-fail-ink);
-  border-color: var(--status-fail-bg);
-  font-weight: 600;
-}
-
-/* the full-width red band that names the worst case when the self-test fails */
-.selftest-banner {
-  background: var(--status-fail-bg);
-  color: var(--status-fail-ink);
-  padding: 1rem 2rem;
-  font-size: 1.05rem;
-  font-weight: 600;
-  line-height: 1.45;
-}
-
-.selftest-banner code {
-  color: inherit;
-  font-weight: 400;
-}
-
-.selftest-banner-detail {
-  display: block;
-  margin-top: 0.4rem;
-  font-weight: 400;
-  font-size: 0.95rem;
-}
-
-/* ------------------------------------------------------------------ */
-/* section navigation                                                  */
-
-.section-nav {
-  max-width: var(--content-width);
-  margin: 0 auto;
-  padding: 0 2rem 0.5rem;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem 1.5rem;
-  font-size: 0.9rem;
-}
-
-.section-nav a {
-  color: var(--ink-secondary);
-  text-decoration: none;
-  padding: 0.2rem 0;
-  border-bottom: 2px solid transparent;
-}
-
-.section-nav a:hover {
-  border-bottom-color: var(--line-strong);
-}
-
-/* ------------------------------------------------------------------ */
-/* sections                                                            */
-
-main {
-  max-width: var(--content-width);
-  margin: 0 auto;
-  padding: 0 2rem 3rem;
-}
-
-.viz-section {
-  margin: 3rem 0 0;
-  padding-top: 1.75rem;
-  border-top: 3px solid var(--section-accent, var(--line-strong));
-}
-
-.viz-section:first-child {
-  margin-top: 1.5rem;
-}
-
-.viz-section[data-section="1"] { --section-accent: var(--accent-curves); }
-.viz-section[data-section="2"] { --section-accent: var(--accent-polar); }
-.viz-section[data-section="3"] { --section-accent: var(--accent-map); }
-.viz-section[data-section="4"] { --section-accent: var(--accent-surface); }
-
-.section-header {
-  display: flex;
-  align-items: flex-start;
-  gap: 1.1rem;
-  margin-bottom: 1.25rem;
-}
-
-.section-number {
-  flex: none;
-  width: 2.6rem;
-  height: 2.6rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: var(--section-accent, var(--line-strong));
-  color: #ffffff;
-  font-size: 1.25rem;
-  font-weight: 700;
-}
-
-.section-header h2 {
-  font-size: 1.45rem;
-}
-
-.section-lead {
-  margin-top: 0.3rem;
-  color: var(--ink-secondary);
-  max-width: 90ch;
-}
-
-.section-body {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: 1.25rem 1.5rem 1.5rem;
-  min-height: 8rem;
-}
-
-/* while a builder has not run yet, or has failed, the body says so */
-.section-placeholder {
-  color: var(--ink-muted);
-  font-style: italic;
-}
-
-.error {
-  padding: 0.75rem 1rem;
-  border-left: 4px solid var(--status-fail-bg);
-  background: var(--surface-muted);
-  color: var(--ink);
-  border-radius: 4px;
-  overflow-wrap: anywhere;
-}
-
-.error code {
-  display: block;
-  margin-top: 0.4rem;
-  white-space: pre-wrap;
-  color: var(--ink-secondary);
-}
-
-/* ------------------------------------------------------------------ */
-/* controls — the panel beside or above the plot it drives             */
-
-.controls {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
-  gap: 0.75rem 1.25rem;
-  padding: 0.9rem 1.1rem;
-  margin-bottom: 1.25rem;
-  background: var(--surface-muted);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-}
-
-.control {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  min-width: 0;
-}
-
-.control-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem 1.25rem;
-}
-
-.section-body label {
-  font-size: 0.88rem;
-  color: var(--ink-secondary);
-}
-
-.section-body fieldset {
-  margin: 0;
-  padding: 0.6rem 0.9rem 0.8rem;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  min-width: 0;
-}
-
-.section-body legend {
-  padding: 0 0.4rem;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--ink-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.section-body select,
-.section-body input[type="number"],
-.section-body input[type="text"] {
-  font: inherit;
-  font-size: 0.92rem;
-  padding: 0.3rem 0.5rem;
-  color: var(--ink);
-  background: var(--surface);
-  border: 1px solid var(--line-strong);
-  border-radius: 6px;
-  min-width: 0;
-}
-
-.section-body input[type="number"] {
-  width: 7rem;
-}
-
-.section-body input[type="range"] {
-  width: 100%;
-  accent-color: var(--section-accent, var(--focus));
-}
-
-.section-body input[type="checkbox"],
-.section-body input[type="radio"] {
-  accent-color: var(--section-accent, var(--focus));
-  width: 1rem;
-  height: 1rem;
-  vertical-align: -0.15em;
-  margin-right: 0.35rem;
-}
-
-.section-body button {
-  font: inherit;
-  font-size: 0.9rem;
-  padding: 0.35rem 0.8rem;
-  color: var(--ink);
-  background: var(--surface);
-  border: 1px solid var(--line-strong);
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.section-body button:hover {
-  border-color: var(--section-accent, var(--focus));
-}
-
-.section-body output {
-  font-family: var(--font-mono);
-  font-size: 0.9rem;
-  color: var(--ink);
-}
-
-/* ------------------------------------------------------------------ */
-/* plots                                                               */
-
-.plot-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1.25rem;
-  align-items: stretch;
-}
-
-.plot-row > .plot,
-.plot-row > * {
-  flex: 1 1 22rem;
-  min-width: 0;
-}
-
-.plot {
-  min-height: 24rem;
-  width: 100%;
-}
-
-.plot-title {
-  margin: 0 0 0.4rem;
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--ink);
-}
-
-.note {
-  margin-top: 0.75rem;
-  font-size: 0.86rem;
-  color: var(--ink-muted);
-  max-width: 100ch;
-}
-
-/* ------------------------------------------------------------------ */
-/* footer                                                              */
-
-.page-footer {
-  max-width: var(--content-width);
-  margin: 0 auto;
-  padding: 1.5rem 2rem 3rem;
-  border-top: 1px solid var(--line);
-  color: var(--ink-muted);
-  font-size: 0.86rem;
-  display: grid;
-  gap: 0.4rem;
-}
-
-.page-footer code {
-  color: var(--ink-secondary);
-  overflow-wrap: anywhere;
-}
-
-/* ------------------------------------------------------------------ */
-/* laptop and narrower                                                 */
-
-@media (max-width: 1100px) {
-  .page-header {
-    grid-template-columns: 1fr;
-    grid-template-areas:
-      "text"
-      "badge"
-      "provenance";
-    padding: 1.5rem 1.25rem 1rem;
-  }
-
-  .selftest {
-    justify-self: start;
-  }
-
-  .section-nav,
-  main,
-  .page-footer {
-    padding-left: 1.25rem;
-    padding-right: 1.25rem;
-  }
-
-  .section-body {
-    padding: 1rem 1rem 1.25rem;
-  }
-}
-
-@media (max-width: 700px) {
-  body {
-    font-size: 14px;
-  }
-
-  .page-header h1 {
-    font-size: 1.5rem;
-  }
-
-  .provenance {
-    grid-template-columns: 1fr;
-    row-gap: 0;
-  }
-
-  .provenance dt {
-    margin-top: 0.4rem;
-  }
-
-  .plot {
-    min-height: 20rem;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  * {
-    scroll-behavior: auto !important;
-    transition: none !important;
-  }
-}
-
-/* The shared-parameter line above the polar triptych: the three panel
-   titles are a third of the row wide each, so the parameters they all
-   share are stated once, here, where there is width for them. */
-.emol-parameter-line {
-  margin: 0 0 0.35rem 0;
-  font-variant-numeric: tabular-nums;
-  color: var(--emol-text);
-  font-weight: 500;
-}
-
-</style>
-<style>
-/* Public-site override: hide local file paths and internal HPC/job
-   provenance notes. The self-test badge (#selftest-badge) and the
-   chart sections are unaffected. */
-#page-summary, #provenance-list, #page-footer { display: none !important; }
-</style>
+<link rel="stylesheet" href="n2-explorer.css">
 </head>
 <body>
 <a class="skip-link" href="#section-curves">Skip to the plots</a>
 
 <header class="page-header" id="page-header">
-  <div class="page-header-text">
-    <p class="eyebrow">emol &middot; molecular photoionization &middot; interactive visualization</p>
-    <h1 id="page-title">N2 3sigma_g — emol photoionization</h1>
-    <p class="page-summary" id="page-summary">Reading the embedded payload&hellip;</p>
+  <div class="explorer-topline">
+    <a class="back-link" href="../../emol.html#n2" target="_top">← eMOL</a>
+    <span class="eyebrow">Molecular photoionization / Benchmark explorer</span>
   </div>
-  <div id="selftest-badge" class="selftest selftest-pending" role="status" aria-live="polite">
-    <span class="selftest-label">Self-test</span>
-    <span class="selftest-text" id="selftest-text">not yet run</span>
+  <div class="hero-content">
+    <div class="page-header-text">
+      <div class="title-line"><h1 id="page-title">Nitrogen <span>N<sub>2</sub></span></h1><span class="orbital">3σ<sub>g</sub> orbital</span></div>
+      <p class="page-summary" id="page-summary">Explore how electron emission changes with energy, direction and polarization.</p>
+      <div class="dataset-facts" aria-label="Dataset overview">
+        <span><strong id="energy-range">1–40 eV</strong> electron energy</span>
+        <span><strong id="energy-count">40</strong> energy samples</span>
+        <span>One- &amp; two-photon data</span>
+      </div>
+    </div>
+    <svg class="molecule-mark" viewBox="0 0 240 110" aria-hidden="true">
+      <defs><radialGradient id="atom-fill" cx="35%" cy="25%"><stop stop-color="#fff"/><stop offset="1" stop-color="#dce7f0"/></radialGradient></defs>
+      <ellipse cx="120" cy="91" rx="81" ry="6" fill="#e7edf2"/>
+      <g stroke="#7297ab" stroke-width="2.5"><path d="M85 44h70M85 54h70M85 64h70"/></g>
+      <circle cx="66" cy="54" r="29" fill="url(#atom-fill)" stroke="#c3d4df"/>
+      <circle cx="174" cy="54" r="29" fill="url(#atom-fill)" stroke="#c3d4df"/>
+      <g fill="#24586a" text-anchor="middle" font-size="23" font-family="system-ui" font-weight="600"><text x="66" y="62">N</text><text x="174" y="62">N</text></g>
+    </svg>
   </div>
-  <dl class="provenance" id="provenance-list" aria-label="Source artifacts"></dl>
+  <details class="verification">
+    <summary><span id="selftest-badge" class="selftest selftest-pending" role="status" aria-live="polite"><span class="status-dot" aria-hidden="true"></span><span id="selftest-text">Checking reference data…</span></span><span class="verification-hint">Verification details</span></summary>
+    <p id="selftest-detail">Comparing the browser calculations with the embedded Python reference vectors.</p>
+  </details>
+  <dl id="provenance-list" hidden></dl>
 </header>
-
 <div id="selftest-banner" class="selftest-banner" role="alert" hidden></div>
-
-<nav class="section-nav" aria-label="Sections">
-  <a href="#section-curves">1 &middot; Energy curves</a>
-  <a href="#section-polar">2 &middot; Polar cuts at one energy</a>
-  <a href="#section-map">3 &middot; Energy&ndash;angle map</a>
-  <a href="#section-surface">4 &middot; 3D angular distribution</a>
+<nav class="section-nav" role="tablist" aria-label="Explore N₂ photoionization">
+  <button type="button" id="view-curves" role="tab" aria-controls="section-curves" aria-selected="true"><span class="nav-number">01</span>Energy curves</button>
+  <button type="button" id="view-polar" role="tab" aria-controls="section-polar" aria-selected="false" tabindex="-1"><span class="nav-number">02</span>Polar cuts</button>
+  <button type="button" id="view-map" role="tab" aria-controls="section-map" aria-selected="false" tabindex="-1"><span class="nav-number">03</span>Energy–angle map</button>
+  <button type="button" id="view-surface" role="tab" aria-controls="section-surface" aria-selected="false" tabindex="-1"><span class="nav-number">04</span>3D distribution</button>
 </nav>
-
+<noscript><p class="error">Enable JavaScript to load the interactive plots and verify the reference data.</p></noscript>
 <main id="main">
 
-  <section id="section-curves" class="viz-section" data-section="1" aria-labelledby="heading-curves">
+  <section id="section-curves" class="viz-section" data-section="1" role="tabpanel" aria-labelledby="view-curves" tabindex="0">
     <div class="section-header">
       <span class="section-number" aria-hidden="true">1</span>
       <div>
         <h2 id="heading-curves">Energy curves</h2>
-        <p class="section-lead">Cross section, asymmetry parameter and delays against photoelectron energy (or momentum). Toggle series on and off; overlay the ePolyScat reference when the payload carries it.</p>
+        <p class="section-lead">Choose an observable, then compare polarization components across the energy range.</p>
       </div>
     </div>
     <div class="section-body" id="curves-root" data-builder="buildEnergyCurves">
@@ -703,12 +70,12 @@ main {
     </div>
   </section>
 
-  <section id="section-polar" class="viz-section" data-section="2" aria-labelledby="heading-polar">
+  <section id="section-polar" class="viz-section" data-section="2" role="tabpanel" aria-labelledby="view-polar" tabindex="0" hidden>
     <div class="section-header">
       <span class="section-number" aria-hidden="true">2</span>
       <div>
-        <h2 id="heading-polar">Polar cuts at one energy</h2>
-        <p class="section-lead">Three polar plots side by side at the energy on the slider: cross section, one-photon delay, two-photon delay. Choose the polarization (alpha, beta) and the azimuth phi of the cut.</p>
+        <h2 id="heading-polar">Angular cuts at a selected energy</h2>
+        <p class="section-lead">Compare emission strength and delays in a plane through the molecule. Adjust the energy and polarization below.</p>
       </div>
     </div>
     <div class="section-body" id="polar-root" data-builder="buildPolarTriptych">
@@ -716,12 +83,12 @@ main {
     </div>
   </section>
 
-  <section id="section-map" class="viz-section" data-section="3" aria-labelledby="heading-map">
+  <section id="section-map" class="viz-section" data-section="3" role="tabpanel" aria-labelledby="view-map" tabindex="0" hidden>
     <div class="section-header">
       <span class="section-number" aria-hidden="true">3</span>
       <div>
         <h2 id="heading-map">Energy&ndash;angle map</h2>
-        <p class="section-lead">A polar colour map with energy (or momentum) as the radius and theta as the angle. Choose the quantity, and whether it is a fixed-angle cut or an average over phi and/or the polarization angles &mdash; the plot title states which.</p>
+        <p class="section-lead">See the full energy and angular dependence. Radius represents energy or momentum; colour represents the selected observable.</p>
       </div>
     </div>
     <div class="section-body" id="map-root" data-builder="buildEnergyThetaMap">
@@ -729,12 +96,12 @@ main {
     </div>
   </section>
 
-  <section id="section-surface" class="viz-section" data-section="4" aria-labelledby="heading-surface">
+  <section id="section-surface" class="viz-section" data-section="4" role="tabpanel" aria-labelledby="view-surface" tabindex="0" hidden>
     <div class="section-header">
       <span class="section-number" aria-hidden="true">4</span>
       <div>
         <h2 id="heading-surface">3D angular distribution</h2>
-        <p class="section-lead">Rotate the molecular-frame emission surface r(theta, phi) = sigma(theta, phi), coloured by the local delay tau(theta, phi), at the energy you choose &mdash; shape and timing in one object.</p>
+        <p class="section-lead">Explore emission in three dimensions. Surface radius shows the differential cross section; colour shows the selected quantity.</p>
       </div>
     </div>
     <div class="section-body" id="surface-root" data-builder="buildSurface3D">
@@ -744,7 +111,8 @@ main {
 
 </main>
 
-<footer class="page-footer" id="page-footer">
+<footer class="explorer-footer"><span>eMOL <span aria-hidden="true">/</span> N₂ · 3σ<sub>g</sub></span><span>Interactive photoionization benchmarks</span></footer>
+<footer id="page-footer" hidden>
   <p id="footer-plotly"></p>
   <p id="footer-generated"></p>
   <p id="footer-physics">Physics: docs/sm.pdf Eqs. S20, S25, S27, S31, S33 and S35; the reference implementation is <code>stages/postprocess/src/analytic_average.hpp</code> with the Coulomb device of <code>stages/postprocess/src/coulomb_delay.hpp</code>. The exporter ships g = D exp(&minus;i sigma_0) and its cubic-spline slope; the page adds tau_C(E) itself.</p>
@@ -2880,12 +2248,12 @@ if (typeof module !== 'undefined' && module.exports) {
         onePhotonDelay: "#1baf7a",
         twoPhotonDelay: "#eb6834",
         polarization: "#eb6834",
-        ink: "#0b0b0b",
+        ink: "#1e3345",
         secondaryInk: "#52514e",
         muted: "#898781",
-        grid: "#e1e0d9",
-        axis: "#c3c2b7",
-        surface: "#fcfcfb",
+        grid: "#e9eef3",
+        axis: "#c9d4df",
+        surface: "#ffffff",
     };
 
     // One hue, light -> dark, for magnitudes (the log cross section).
@@ -2908,6 +2276,35 @@ if (typeof module !== 'undefined' && module.exports) {
         [0.75, "#ec835a"],
         [1.0, "#b8312f"],
     ];
+
+    function delayColourScale(low, high) {
+        const extent = Math.max(Math.abs(low), Math.abs(high));
+        function colourAt(value) {
+            const position = (value / extent + 1) / 2;
+            const index = Math.min(3, Math.max(0, Math.floor(position * 4)));
+            const fraction = Math.min(1, Math.max(0, position * 4 - index));
+            const start = DIVERGING_BLUE_RED[index][1];
+            const end = DIVERGING_BLUE_RED[index + 1][1];
+            const channels = [1, 3, 5].map(function (offset) {
+                const a = parseInt(start.slice(offset, offset + 2), 16);
+                const b = parseInt(end.slice(offset, offset + 2), 16);
+                return Math.round(a + (b - a) * fraction);
+            });
+            return "rgb(" + channels.join(",") + ")";
+        }
+        const values = [low];
+        [-extent, -extent / 2, 0, extent / 2, extent].forEach(function (value) {
+            if (value > low && value < high) values.push(value);
+        });
+        values.push(high);
+        return values.map(function (value) { return [(value - low) / (high - low), colourAt(value)]; });
+    }
+
+    function resizePlot(plot) {
+        return window.Plotly.Plots.resize(plot).catch(function (error) {
+            if (plot.getClientRects().length) console.error(error);
+        });
+    }
 
     const PLOT_CONFIG = {
         responsive: true,
@@ -2956,7 +2353,6 @@ if (typeof module !== 'undefined' && module.exports) {
     }
 
     function showErrorBanner(root, message) {
-        injectStylesOnce();
         const banner = element("div", "emol-error-banner", message);
         banner.setAttribute("role", "alert");
         root.appendChild(banner);
@@ -3044,7 +2440,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
     function moleculeName(data) {
         if (data.meta && data.meta.molecule) {
-            return data.meta.molecule;
+            return data.meta.molecule.replace("N2 3sigma_g", "N₂ 3σg");
         }
         return "target";
     }
@@ -3305,8 +2701,10 @@ if (typeof module !== 'undefined' && module.exports) {
     const Controls = {
         // A titled box that groups the controls of one concern.
         group: function (parent, title) {
-            const group = element("div", "emol-group");
-            group.appendChild(element("h4", "emol-group-title", title));
+            const group = element("details", "emol-group");
+            group.open = window.innerWidth <= 700 ? title === "Energy"
+                : !/series|Radial axes|Colour scale|Reference|Surface/.test(title);
+            group.appendChild(element("summary", "emol-group-title", title.replace(" (Eq. S25)", "")));
             parent.appendChild(group);
             return group;
         },
@@ -3329,6 +2727,8 @@ if (typeof module !== 'undefined' && module.exports) {
             input.step = String(spec.step);
             input.value = String(spec.value);
             const note = element("div", "emol-control-note");
+            note.id = id + "-note";
+            input.setAttribute("aria-describedby", note.id);
             wrapper.appendChild(row);
             wrapper.appendChild(input);
             wrapper.appendChild(note);
@@ -3339,6 +2739,7 @@ if (typeof module !== 'undefined' && module.exports) {
             }
             function refreshReadout() {
                 readout.textContent = spec.format(currentValue());
+                input.setAttribute("aria-valuetext", readout.textContent);
             }
             refreshReadout();
             input.addEventListener("input", function () {
@@ -3455,13 +2856,20 @@ if (typeof module !== 'undefined' && module.exports) {
             wrapper.appendChild(input);
             parent.appendChild(wrapper);
             input.addEventListener("change", function () {
+                input.setCustomValidity("");
                 const value = Number(input.value);
-                if (Number.isFinite(value)) {
-                    spec.onChange(value);
+                if (!input.value.trim() || !Number.isFinite(value)) {
+                    input.setCustomValidity("Enter a number.");
                 }
+                if (!input.checkValidity()) {
+                    input.reportValidity();
+                    return;
+                }
+                spec.onChange(value);
             });
             return {
                 element: wrapper,
+                input: input,
                 getValue: function () {
                     return Number(input.value);
                 },
@@ -3479,9 +2887,22 @@ if (typeof module !== 'undefined' && module.exports) {
             let low = spec.low;
             let high = spec.high;
             function emit() {
-                if (high > low) {
-                    spec.onChange(low, high);
+                for (const handle of [lowHandle, highHandle]) {
+                    const input = handle.input;
+                    input.setCustomValidity("");
+                    if (!input.value.trim() || !Number.isFinite(Number(input.value))) {
+                        input.setCustomValidity("Enter a number.");
+                    }
+                    if (!input.checkValidity()) { input.reportValidity(); return; }
                 }
+                low = lowHandle.getValue();
+                high = highHandle.getValue();
+                if (high <= low) {
+                    highHandle.input.setCustomValidity("The upper limit must be greater than the lower limit.");
+                    highHandle.input.reportValidity();
+                    return;
+                }
+                spec.onChange(low, high);
             }
             const lowHandle = Controls.number(row, {
                 label: "from",
@@ -3501,6 +2922,8 @@ if (typeof module !== 'undefined' && module.exports) {
                     emit();
                 },
             });
+            lowHandle.input.setAttribute("aria-label", spec.label + " minimum" + (spec.unit ? " (" + spec.unit + ")" : ""));
+            highHandle.input.setAttribute("aria-label", spec.label + " maximum" + (spec.unit ? " (" + spec.unit + ")" : ""));
             return {
                 element: wrapper,
                 getRange: function () {
@@ -3520,76 +2943,21 @@ if (typeof module !== 'undefined' && module.exports) {
     // Section frame and styles
     // ------------------------------------------------------------------
 
-    let stylesInjected = false;
-
-    function injectStylesOnce() {
-        if (stylesInjected) {
-            return;
-        }
-        stylesInjected = true;
-        const style = document.createElement("style");
-        style.textContent = [
-            ".emol-section { background: #fcfcfb; color: #0b0b0b; border: 1px solid rgba(11,11,11,0.10);",
-            "  border-radius: 8px; padding: 16px 20px 20px; margin: 0 0 28px;",
-            "  font-family: " + FONT_FAMILY + "; font-size: 14px; }",
-            ".emol-section-header { display: flex; align-items: baseline; gap: 14px;",
-            "  border-bottom: 3px solid var(--emol-accent); padding-bottom: 8px; margin-bottom: 10px; }",
-            ".emol-section-number { font-size: 12px; font-weight: 600; color: var(--emol-accent);",
-            "  letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; }",
-            ".emol-section-title { font-size: 19px; font-weight: 600; margin: 0; }",
-            ".emol-section-lead { color: #52514e; font-size: 13px; margin: 0 0 16px; line-height: 1.45; }",
-            ".emol-body { display: flex; gap: 18px; align-items: flex-start; flex-wrap: wrap; }",
-            ".emol-controls { flex: 0 0 260px; display: flex; flex-direction: column; gap: 12px; }",
-            ".emol-plots { flex: 1 1 640px; min-width: 0; }",
-            ".emol-group { border: 1px solid #e1e0d9; border-radius: 6px; padding: 10px 12px; background: #ffffff; }",
-            ".emol-group-title { font-size: 11px; font-weight: 600; color: #52514e; text-transform: uppercase;",
-            "  letter-spacing: 0.06em; margin: 0 0 8px; }",
-            ".emol-control { display: flex; flex-direction: column; gap: 4px; margin: 6px 0; font-size: 13px; }",
-            ".emol-control-inline { flex-direction: row; align-items: center; gap: 6px; margin: 2px 0; }",
-            ".emol-control-inline .emol-number { width: 5.5em; }",
-            ".emol-control-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }",
-            ".emol-range-pair { justify-content: flex-start; flex-wrap: wrap; }",
-            ".emol-label { color: #0b0b0b; }",
-            ".emol-readout { font-variant-numeric: tabular-nums; color: #52514e; font-size: 12px; text-align: right; }",
-            ".emol-control-note { font-size: 11px; color: #898781; min-height: 0; }",
-            ".emol-range { width: 100%; accent-color: var(--emol-accent); margin: 0; }",
-            ".emol-select, .emol-number { font: inherit; font-size: 13px; padding: 3px 6px;",
-            "  border: 1px solid #c3c2b7; border-radius: 4px; background: #ffffff; color: #0b0b0b; }",
-            ".emol-check { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 3px 0; cursor: pointer; }",
-            ".emol-check-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 8px; }",
-            ".emol-swatch { display: inline-block; width: 20px; height: 0; border-top: 3px solid; flex: none; }",
-            ".emol-swatch-dash { border-top-style: dashed; }",
-            ".emol-swatch-dot { border-top-style: dotted; }",
-            ".emol-swatch-marker { border-top: none; height: auto; font-weight: 700; text-align: center; line-height: 1; }",
-            ".emol-note { font-size: 12px; color: #52514e; margin: 8px 0 0; line-height: 1.45; }",
-            ".emol-warning { background: #fff4e5; border-left: 4px solid #ec835a; padding: 8px 12px;",
-            "  font-size: 13px; margin: 8px 0; border-radius: 0 4px 4px 0; }",
-            ".emol-error-banner { background: #d03b3b; color: #ffffff; padding: 14px 18px; font-weight: 600;",
-            "  font-size: 15px; border-radius: 6px; margin: 8px 0; font-family: " + FONT_FAMILY + "; }",
-            ".emol-triptych { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }",
-            ".emol-plot { width: 100%; }",
-            ".emol-disabled { opacity: 0.45; }",
-            "@media (max-width: 1100px) { .emol-triptych { grid-template-columns: minmax(0, 1fr); } }",
-        ].join("\n");
-        document.head.appendChild(style);
-    }
-
-    // spec: {number, title, lead, accent}
+    // The outer document supplies the heading; each builder supplies controls and plots.
     function sectionFrame(root, spec) {
-        injectStylesOnce();
-        const section = element("section", "emol-section");
+        const section = element("div", "emol-section");
         section.style.setProperty("--emol-accent", spec.accent);
-        const header = element("div", "emol-section-header");
-        header.appendChild(element("span", "emol-section-number", spec.number));
-        header.appendChild(element("h2", "emol-section-title", spec.title));
-        section.appendChild(header);
-        section.appendChild(element("p", "emol-section-lead", spec.lead));
         const body = element("div", "emol-body");
         const controls = element("div", "emol-controls");
+        controls.setAttribute("aria-label", spec.title + " controls");
         const plots = element("div", "emol-plots");
         body.appendChild(controls);
         body.appendChild(plots);
         section.appendChild(body);
+        const explanation = element("details", "reading-guide");
+        explanation.appendChild(element("summary", "", "How to read this view"));
+        explanation.appendChild(element("p", "", spec.lead));
+        section.appendChild(explanation);
         root.appendChild(section);
         return {section: section, controls: controls, plots: plots};
     }
@@ -3654,18 +3022,7 @@ if (typeof module !== 'undefined' && module.exports) {
                 tickfont: {size: 10},
             },
         };
-        layout.annotations = [
-            {text: "θ from +z", xref: "paper", yref: "paper", x: 0.5, y: 1.0,
-             showarrow: false, font: {size: 10, color: COLOR.muted}, yanchor: "bottom"},
-            // lifted clear of y = 0.5: the radial axis and its tick labels
-            // run along that line, and the two collided there
-            {text: "azimuth φ", xref: "paper", yref: "paper", x: 1.0, y: 0.5,
-             yshift: 16, showarrow: false, font: {size: 10, color: COLOR.muted},
-             xanchor: "left"},
-            {text: "φ + 180°", xref: "paper", yref: "paper", x: 0.0, y: 0.5,
-             yshift: 16, showarrow: false, font: {size: 10, color: COLOR.muted},
-             xanchor: "right"},
-        ];
+        layout.annotations = [];
         return layout;
     }
 
@@ -3815,17 +3172,6 @@ if (typeof module !== 'undefined' && module.exports) {
     }
 
     // Where each panel of the 2 x 2 figure lives.
-    const CURVE_PANELS = {
-        sigma: {x: "x", y: "y", xAxisKey: "xaxis", yAxisKey: "yaxis",
-                xDomain: [0.0, 0.46], yDomain: [0.57, 1.0]},
-        beta: {x: "x2", y: "y2", xAxisKey: "xaxis2", yAxisKey: "yaxis2",
-               xDomain: [0.54, 1.0], yDomain: [0.57, 1.0]},
-        tauOne: {x: "x3", y: "y3", xAxisKey: "xaxis3", yAxisKey: "yaxis3",
-                 xDomain: [0.0, 0.46], yDomain: [0.0, 0.43]},
-        tauTwo: {x: "x4", y: "y4", xAxisKey: "xaxis4", yAxisKey: "yaxis4",
-                 xDomain: [0.54, 1.0], yDomain: [0.0, 0.43]},
-    };
-
     function buildEnergyCurves(root, data) {
         const core = requireCore(root);
         if (!core) {
@@ -3846,6 +3192,7 @@ if (typeof module !== 'undefined' && module.exports) {
         });
 
         const state = {
+            panel: "sigma",
             xMode: "energy",
             sigmaScale: "log",
             delayLow: DEFAULT_DELAY_LOW_AS,
@@ -3961,7 +3308,7 @@ if (typeof module !== 'undefined' && module.exports) {
                 render();
             },
         });
-        Controls.select(axesGroup, {
+        const sigmaScaleControl = Controls.select(axesGroup, {
             label: "cross-section scale",
             options: [
                 {value: "log", label: "logarithmic"},
@@ -3973,7 +3320,7 @@ if (typeof module !== 'undefined' && module.exports) {
                 render();
             },
         });
-        Controls.rangePair(axesGroup, {
+        const delayRangeControl = Controls.rangePair(axesGroup, {
             label: "delay axes",
             low: state.delayLow, high: state.delayHigh, step: 10, unit: "as",
             onChange: function (low, high) {
@@ -3982,7 +3329,7 @@ if (typeof module !== 'undefined' && module.exports) {
                 render();
             },
         });
-        Controls.checkbox(axesGroup, {
+        const clipDelayControl = Controls.checkbox(axesGroup, {
             label: "clip delay axes to this range",
             checked: state.clipDelays,
             onChange: function (checked) {
@@ -4002,7 +3349,7 @@ if (typeof module !== 'undefined' && module.exports) {
                 continue;
             }
             const target = spec.group === "one" ? oneGrid : twoGrid;
-            Controls.checkbox(target, {
+            const seriesControl = Controls.checkbox(target, {
                 label: spec.label,
                 checked: spec.visible,
                 swatch: {color: spec.color, style: spec.dash === "dash" ? "dash" : (spec.dash === "dot" ? "dot" : "solid")},
@@ -4011,6 +3358,7 @@ if (typeof module !== 'undefined' && module.exports) {
                     render();
                 },
             });
+            seriesControl.element.dataset.panel = spec.panel;
         }
         if (!hasTwoPhoton(data)) {
             Controls.note(twoGroup, "No two-photon data in this payload (meta.has_twophoton is false).");
@@ -4033,20 +3381,33 @@ if (typeof module !== 'undefined' && module.exports) {
         });
         if (hasEpolyscat(data)) {
             Controls.note(referenceGroup,
-                "ePolyScat's delay is its LFTimeDelay definition on its own field-angle"
-                + " grid, overlaid for orientation; it is not the same quantity as the"
-                + " Eq. S27b/S35 averages (see validation/N2/DELAY_LIKE_FOR_LIKE.md).");
+                "The delay reference uses ePolyScat’s LFTimeDelay definition on its own field-angle grid."
+                + " It is a comparison of different definitions, not a direct validation of the sphere-averaged delay.");
         } else {
             referenceToggle.setEnabled(false);
             Controls.note(referenceGroup, "No ePolyScat reference in this payload.");
         }
 
-        // ---- plot ----
+        // A focused plot gives each observable enough room to read.
+        const observableNames = {sigma: "Cross section", beta: "Asymmetry β", tauOne: "One-photon delay", tauTwo: "Two-photon delay"};
+        const observableBar = element("div", "emol-observables");
+        observableBar.setAttribute("role", "group");
+        observableBar.setAttribute("aria-label", "Energy curve observable");
+        for (const key of Object.keys(observableNames)) {
+            const button = element("button", "", observableNames[key]);
+            button.type = "button";
+            button.dataset.panel = key;
+            button.addEventListener("click", function () { state.panel = key; render(); });
+            observableBar.appendChild(button);
+        }
+        frame.plots.appendChild(observableBar);
+        const context = element("p", "chart-context");
+        frame.plots.appendChild(context);
         const plotDiv = element("div", "emol-plot");
         frame.plots.appendChild(plotDiv);
 
         const prefactorCheck = checkCrossSectionPrefactor(core, data);
-        const checkNote = Controls.note(frame.plots,
+        const checkNote = Controls.note(frame.section.querySelector(".reading-guide"),
             "Payload check: the artifact's σx, σy, σz and EmolCore's column"
             + " channel sums share one prefactor to " + formatSignificant(prefactorCheck.worstSpread, 2)
             + " relative (worst over energies"
@@ -4097,7 +3458,6 @@ if (typeof module !== 'undefined' && module.exports) {
         }
 
         function traceFor(spec) {
-            const panel = CURVE_PANELS[spec.panel];
             const xLabel = state.xMode === "energy" ? "E" : "k";
             const xUnit = state.xMode === "energy" ? "eV" : "a.u.";
             return {
@@ -4108,83 +3468,56 @@ if (typeof module !== 'undefined' && module.exports) {
                 y: spec.y,
                 line: {color: spec.color, width: 2, dash: spec.dash || "solid"},
                 marker: {color: spec.color, size: spec.mode === "markers" ? 8 : 5, symbol: spec.symbol},
-                xaxis: panel.x,
-                yaxis: panel.y,
-                legendgroup: spec.panel,
+                xaxis: "x",
+                yaxis: "y",
+                legendgroup: spec.id,
                 hovertemplate: spec.name + ": %{y:.5g}<br>" + xLabel + " = %{x:.4g} " + xUnit
                                + "<extra></extra>",
             };
         }
 
-        function panelTitle(panelKey, text) {
-            const panel = CURVE_PANELS[panelKey];
-            return {
-                text: text,
-                xref: "paper", yref: "paper",
-                x: 0.5 * (panel.xDomain[0] + panel.xDomain[1]),
-                y: panel.yDomain[1],
-                xanchor: "center", yanchor: "bottom",
-                showarrow: false,
-                font: {size: 12},
-            };
-        }
-
         function buildLayout() {
-            const layout = baseLayout(
-                moleculeName(data) + " — one-photon observables and RABBITT delays"
-                + " (E is the photoelectron energy; two-photon panel: sideband energy E<sub>f</sub>)");
-            layout.height = 760;
-            layout.margin = {l: 60, r: 20, t: 80, b: 90};
-            layout.legend = {orientation: "h", x: 0, y: -0.09, font: {size: 11}};
-            layout.uirevision = state.xMode;
-            layout.annotations = [
-                panelTitle("sigma", "cross section σ (Mb)"),
-                panelTitle("beta", "asymmetry parameter β"),
-                panelTitle("tauOne", "one-photon delay τ (as): sphere average at fixed polarization"
-                                     + " (Eq. S27b), ⟨τ⟩ isotropic (Eq. S35)"),
-                panelTitle("tauTwo", "two-photon delays (as): channel-summed pair products"),
-            ];
-            const delayRange = state.clipDelays ? [state.delayLow, state.delayHigh] : undefined;
-            for (const panelKey of Object.keys(CURVE_PANELS)) {
-                const panel = CURVE_PANELS[panelKey];
-                const xExtra = {domain: panel.xDomain, anchor: panel.y};
-                if (panelKey !== "sigma") {
-                    xExtra.matches = "x";
-                }
-                layout[panel.xAxisKey] = cartesianAxis(xAxisTitle(panelKey), xExtra);
-                const yExtra = {domain: panel.yDomain, anchor: panel.x};
-                let yTitle = "";
-                if (panelKey === "sigma") {
-                    yTitle = "σ (Mb)";
-                    yExtra.type = state.sigmaScale;
-                } else if (panelKey === "beta") {
-                    yTitle = "β";
-                } else {
-                    yTitle = "τ (as)";
-                    if (delayRange) {
-                        yExtra.range = delayRange;
-                    } else {
-                        yExtra.autorange = true;
-                    }
-                }
-                layout[panel.yAxisKey] = cartesianAxis(yTitle, yExtra);
+            const layout = baseLayout("");
+            const compact = plotDiv.clientWidth < 500;
+            layout.height = compact ? 430 : 500;
+            layout.margin = {l: compact ? 52 : 64, r: 16, t: 22, b: 85};
+            layout.legend = {orientation: "h", x: 0, y: -0.2, font: {size: 11}, itemclick: false, itemdoubleclick: false};
+            layout.uirevision = state.panel + "-" + state.xMode;
+            layout.xaxis = cartesianAxis(xAxisTitle(state.panel), {automargin: true, nticks: compact ? 5 : 8});
+            const yExtra = {automargin: true};
+            let yTitle = "τ (as)";
+            if (state.panel === "sigma") {
+                yTitle = "σ (Mb)"; yExtra.type = state.sigmaScale;
+                if (state.sigmaScale === "log") { yExtra.dtick = "D2"; yExtra.tickformat = ".2~g"; }
             }
-            if (!hasTwoPhoton(data)) {
-                const panel = CURVE_PANELS.tauTwo;
-                layout.annotations.push({
-                    text: "no two-photon data in this payload<br>(meta.has_twophoton = false)",
-                    xref: "paper", yref: "paper",
-                    x: 0.5 * (panel.xDomain[0] + panel.xDomain[1]),
-                    y: 0.5 * (panel.yDomain[0] + panel.yDomain[1]),
-                    showarrow: false, font: {size: 12, color: COLOR.secondaryInk},
-                });
-            }
+            else if (state.panel === "beta") yTitle = "β";
+            else if (state.clipDelays) yExtra.range = [state.delayLow, state.delayHigh];
+            else yExtra.autorange = true;
+            layout.yaxis = cartesianAxis(yTitle, yExtra);
             return layout;
         }
 
         function render() {
+            observableBar.querySelectorAll("button").forEach(function (button) {
+                button.setAttribute("aria-pressed", String(button.dataset.panel === state.panel));
+            });
+            const isDelay = state.panel === "tauOne" || state.panel === "tauTwo";
+            sigmaScaleControl.element.hidden = state.panel !== "sigma";
+            delayRangeControl.element.hidden = !isDelay;
+            clipDelayControl.element.hidden = !isDelay;
+            oneGroup.hidden = state.panel === "tauTwo";
+            twoGroup.hidden = state.panel !== "tauTwo";
+            referenceGroup.hidden = state.panel === "tauTwo";
+            frame.controls.querySelectorAll("[data-panel]").forEach(function (control) {
+                control.hidden = control.dataset.panel !== state.panel;
+            });
+            context.textContent = state.panel === "sigma" ? "Integrated cross section for x, y and z polarization, plus the isotropic average."
+                : state.panel === "beta" ? "Photoelectron angular asymmetry parameter β."
+                : state.panel === "tauOne" ? "Emission-sphere averages at fixed polarization, plus the isotropic average."
+                : "Channel-summed RABBITT delays at sideband energy E_f: τR, τ1 and τcc = τR − τ1.";
             const traces = [];
             for (const spec of seriesList) {
+                if (spec.panel !== state.panel) continue;
                 if (spec.group === "reference" && !state.showEpolyscat) {
                     continue;
                 }
@@ -4328,6 +3661,11 @@ if (typeof module !== 'undefined' && module.exports) {
         // titles are only a third of the width each and cannot hold them.
         const parameterLine = Controls.note(frame.plots, "");
         parameterLine.className = "emol-note emol-parameter-line";
+        const polarViews = element("div", "emol-observables");
+        polarViews.setAttribute("role", "group");
+        polarViews.setAttribute("aria-label", "Polar observable");
+        frame.plots.appendChild(polarViews);
+        let selectedPolarView = "sigma";
         const grid = element("div", "emol-triptych");
         const sigmaDiv = element("div", "emol-plot");
         const tauDiv = element("div", "emol-plot");
@@ -4336,6 +3674,30 @@ if (typeof module !== 'undefined' && module.exports) {
         grid.appendChild(tauDiv);
         grid.appendChild(twoPhotonDiv);
         frame.plots.appendChild(grid);
+        const polarPlots = {sigma: sigmaDiv, tauOne: tauDiv, tauTwo: twoPhotonDiv};
+        const polarNames = {sigma: "Cross section", tauOne: "One-photon delay", tauTwo: "Two-photon delay", all: "Compare all"};
+        function selectPolarView() {
+            polarViews.querySelectorAll("button").forEach(function (button) {
+                button.setAttribute("aria-pressed", String(button.dataset.view === selectedPolarView));
+            });
+            grid.classList.toggle("is-comparison", selectedPolarView === "all");
+            Object.keys(polarPlots).forEach(function (key) {
+                polarPlots[key].hidden = selectedPolarView !== "all" && selectedPolarView !== key;
+            });
+            requestAnimationFrame(function () {
+                Object.values(polarPlots).forEach(function (plot) {
+                    if (plot.getClientRects().length && plot._fullLayout) resizePlot(plot);
+                });
+            });
+        }
+        Object.keys(polarNames).forEach(function (key) {
+            const button = element("button", "", polarNames[key]);
+            button.type = "button";
+            button.dataset.view = key;
+            button.addEventListener("click", function () { selectedPolarView = key; selectPolarView(); });
+            polarViews.appendChild(button);
+        });
+        selectPolarView();
         const footnote = Controls.note(frame.plots, "");
 
         function fixedParameterText() {
@@ -4375,7 +3737,7 @@ if (typeof module !== 'undefined' && module.exports) {
                 name: "dσ/dΩ",
             };
             const layout = polarLayout({
-                title: "dσ/dΩ — cross section (Mb/sr)",
+                title: "Cross section · Mb/sr",
                 radialTitle: "dσ/dΩ (Mb/sr)",
                 radialRange: radialRange,
                 radialType: radialType,
@@ -4396,7 +3758,7 @@ if (typeof module !== 'undefined' && module.exports) {
                 name: "τ",
             };
             const layout = polarLayout({
-                title: "τ — one-photon delay (as)",
+                title: "One-photon delay · as",
                 radialTitle: "τ (as)",
                 radialRange: [state.delayLow, state.delayHigh],
                 uirevision: "tau",
@@ -4429,7 +3791,7 @@ if (typeof module !== 'undefined' && module.exports) {
                 name: "τ<sub>R</sub>",
             };
             const layout = polarLayout({
-                title: "τ<sub>R</sub> — two-photon delay (as)<br>"
+                title: "Two-photon delay · as<br>"
                        + "<span style=\"font-size:10px\">E<sub>f</sub> = "
                        + formatFixed(finalEnergyEv, 2) + " eV</span>",
                 radialTitle: "τ<sub>R</sub> (as)",
@@ -4450,10 +3812,11 @@ if (typeof module !== 'undefined' && module.exports) {
             renderCrossSection(cutValues);
             renderOnePhotonDelay(cutValues);
             const twoPhotonNote = renderTwoPhotonDelay(weights);
-            // The three panels share every fixed parameter, so they are
-            // stated ONCE here rather than three times inside titles too
-            // narrow to hold them.
-            parameterLine.textContent = "All three panels: " + fixedParameterText() + ".";
+            // Sideband energies may differ from the chosen one-photon energy.
+            parameterLine.textContent = "One-photon " + fixedParameterText() + "."
+                + (hasTwoPhoton(data) ? " Two-photon E_f = "
+                    + formatFixed(data.twophoton.energy_ev[nearestTwoPhotonIndex(data, data.energy_ev[state.energyIndex])], 2)
+                    + " eV (nearest sideband)." : "");
             footnote.textContent =
                 "θ is the polar angle from the molecular z axis, at the top of each"
                 + " circle. The one-photon delay includes the analytic Coulomb term"
@@ -4668,6 +4031,8 @@ if (typeof module !== 'undefined' && module.exports) {
         refreshControlAvailability();
 
         // ---- plot ----
+        const chartContext = element("p", "chart-context");
+        frame.plots.appendChild(chartContext);
         const plotDiv = element("div", "emol-plot");
         frame.plots.appendChild(plotDiv);
         const footnote = Controls.note(frame.plots, "");
@@ -4754,7 +4119,7 @@ if (typeof module !== 'undefined' && module.exports) {
             }
 
             let colourValues = values;
-            let colourscale = DIVERGING_BLUE_RED;
+            let colourscale = delayColourScale(state.delayLow, state.delayHigh);
             let cmin = state.delayLow;
             let cmax = state.delayHigh;
             let colourbar = linearColourBar(quantity.colourTitle);
@@ -4811,17 +4176,24 @@ if (typeof module !== 'undefined' && module.exports) {
                 title += "<br><span style=\"font-size:10px\">" + TWO_PHOTON_CAVEAT + "</span>";
             }
             const layout = polarLayout({
-                title: title,
+                title: "",
                 radialTitle: radialTitle,
                 radialRange: [0, edges[edges.length - 1]],
                 height: 640,
                 uirevision: state.quantity + "-" + state.radial,
             });
-            layout.margin = {l: 60, r: 90, t: 105, b: 50};
+            chartContext.innerHTML = title;
+            const compact = plotDiv.clientWidth < 500;
+            layout.height = compact ? 440 : 570;
+            layout.margin = {l: compact ? 34 : 50, r: compact ? 64 : 90, t: 45, b: 45};
+            layout.polar.radialaxis.title.text = state.radial === "energy"
+                ? (state.quantity === "tauTwo" ? "E<sub>f</sub> (eV)" : "E (eV)") : "k (a.u.)";
+            layout.polar.radialaxis.nticks = compact ? 4 : 6;
             window.Plotly.react(plotDiv, [trace], layout, PLOT_CONFIG);
 
             footnote.textContent =
-                "Each ring is one shipped energy (edges at the midpoints between neighbours),"
+                "θ runs clockwise from the molecular +z axis; the left half uses φ + 180°. "
+                + "Each ring is one shipped energy (edges at the midpoints between neighbours),"
                 + " each wedge one shipped θ sample; nothing is interpolated."
                 + (undefinedCells > 0
                    ? " " + undefinedCells + " cell(s) have no defined delay (|A|² = 0 there) and are left blank."
@@ -4941,6 +4313,8 @@ if (typeof module !== 'undefined' && module.exports) {
             + " where the cross section is too small to see on the shaped surface.");
 
         // ---- plot ----
+        const chartContext = element("p", "chart-context");
+        frame.plots.appendChild(chartContext);
         const plotDiv = element("div", "emol-plot");
         frame.plots.appendChild(plotDiv);
         const footnote = Controls.note(frame.plots, "");
@@ -5025,7 +4399,7 @@ if (typeof module !== 'undefined' && module.exports) {
                 textGrid.push(textRow);
             }
 
-            let colourscale = DIVERGING_BLUE_RED;
+            let colourscale = delayColourScale(state.delayLow, state.delayHigh);
             let cmin = state.delayLow;
             let cmax = state.delayHigh;
             let colourbar;
@@ -5098,17 +4472,27 @@ if (typeof module !== 'undefined' && module.exports) {
             if (useTwoPhoton) {
                 title += "<br><span style=\"font-size:10px\">" + TWO_PHOTON_CAVEAT + "</span>";
             }
-            const layout = baseLayout(title);
-            layout.height = 640;
-            layout.margin = {l: 10, r: 10, t: 90, b: 10};
+            chartContext.innerHTML = title;
+            const layout = baseLayout("");
+            layout.height = plotDiv.clientWidth < 500 ? 440 : 570;
+            layout.margin = {l: 0, r: 0, t: 20, b: 10};
             layout.showlegend = false;
             layout.uirevision = "surface";
+            const compact = plotDiv.clientWidth < 500;
             layout.scene = {
-                xaxis: axis3d("x" + unitLabel, [-extent, extent]),
-                yaxis: axis3d("y" + unitLabel, [-extent, extent]),
-                zaxis: axis3d("z" + unitLabel + " — molecular axis", [-extent, extent]),
+                xaxis: axis3d(compact ? "x" : "x" + unitLabel, [-extent, extent]),
+                yaxis: axis3d(compact ? "y" : "y" + unitLabel, [-extent, extent]),
+                zaxis: axis3d(compact ? "z" : "z" + unitLabel + " — molecular axis", [-extent, extent]),
                 aspectmode: "cube",
             };
+            if (compact) {
+                layout.scene.camera = {eye: {x: 1.65, y: 1.65, z: 1.2}};
+                [layout.scene.xaxis, layout.scene.yaxis, layout.scene.zaxis].forEach(function (axis) { axis.nticks = 3; });
+            }
+            // Preserve the reader's viewpoint when energy or display controls change.
+            if (plotDiv.layout && plotDiv.layout.scene && plotDiv.layout.scene.camera) {
+                layout.scene.camera = JSON.parse(JSON.stringify(plotDiv.layout.scene.camera));
+            }
             window.Plotly.react(plotDiv, traces, layout, PLOT_CONFIG);
 
             footnote.textContent =
@@ -5158,6 +4542,7 @@ if (typeof module !== 'undefined' && module.exports) {
     }
 
     window.EmolSections = {
+        resizePlot: resizePlot,
         buildEnergyCurves: buildEnergyCurves,
         buildPolarTriptych: buildPolarTriptych,
         buildEnergyThetaMap: buildEnergyThetaMap,
@@ -5247,12 +4632,8 @@ if (typeof module !== 'undefined' && module.exports) {
 
     var energySummary = energies.length + " energies, "
       + energies[0].toFixed(3) + " to " + energies[energies.length - 1].toFixed(3) + " eV";
-    setText("page-summary",
-      meta.molecule + ": " + energySummary + "; "
-      + meta.n_channels_kept + " of " + meta.n_channels_total + " partial-wave channels kept"
-      + (meta.has_twophoton ? "; two-photon (RABBITT) sweep included" : "; one-photon only")
-      + (meta.has_epolyscat ? "; ePolyScat reference included." : "."));
-
+    setText("energy-range", energies[0].toFixed(0) + "–" + energies[energies.length - 1].toFixed(0) + " eV");
+    setText("energy-count", String(energies.length));
     appendDefinition(list, "Molecule", meta.molecule);
     appendDefinition(list, "Source artifacts", meta.source);
     appendDefinition(list, "Energies", energySummary);
@@ -5328,9 +4709,11 @@ if (typeof module !== 'undefined' && module.exports) {
     badge.className = "selftest selftest-pass";
     var worstKind = (report.worstCase && report.worstCase.kind) ? report.worstCase.kind : "all checks";
     setText("selftest-text",
-      "passed: " + report.checkCount + " checks over " + report.vectorCount
-      + " Python vectors, worst relative difference "
-      + report.worstRelative.toExponential(2) + " (" + worstKind + ")");
+      report.checkCount + " numerical checks passed");
+    setText("selftest-detail", "Browser calculations agree with " + report.vectorCount
+      + " embedded Python reference vectors. Worst relative difference: "
+      + report.worstRelative.toExponential(2) + "; tolerance: " + report.tolerance.toExponential(0)
+      + ". Includes " + worstKind + " checks. This verifies numerical agreement with the reference implementation.");
     elementById("selftest-banner").hidden = true;
   }
 
@@ -5393,6 +4776,8 @@ if (typeof module !== 'undefined' && module.exports) {
     for (var index = 0; index < SECTIONS.length; index += 1) {
       var section = SECTIONS[index];
       var root = elementById(section.rootId);
+      if (root.closest(".viz-section").hidden || root.dataset.built) continue;
+      root.dataset.built = "true";
       if (plotlyMissing) {
         replaceChildrenWith(root, errorBlock(
           "Plotly did not load, so " + section.label + " cannot draw.",
@@ -5418,7 +4803,8 @@ if (typeof module !== 'undefined' && module.exports) {
         while (root.firstChild) {
           root.removeChild(root.firstChild);
         }
-        builder(root, data);
+        var view = builder(root, data);
+        if (view) root.emolView = view;
       } catch (error) {
         replaceChildrenWith(root, errorBlock(
           section.label + " failed to build: " + (error && error.message ? error.message : String(error)),
@@ -5458,7 +4844,60 @@ if (typeof module !== 'undefined' && module.exports) {
     return;
   }
   runSelfTest();
-  buildSections();
+  initializeViews();
+
+  function initializeViews() {
+    var tabs = Array.from(document.querySelectorAll('.section-nav [role="tab"]'));
+    var lastWidth = window.innerWidth;
+    function resizeVisible() {
+      document.querySelectorAll('.viz-section:not([hidden]) .js-plotly-plot').forEach(function (plot) {
+        if (plot.getClientRects().length) window.EmolSections.resizePlot(plot);
+      });
+    }
+    function activate(index, focus, updateHash) {
+      tabs.forEach(function (tab, i) {
+        var selected = i === index;
+        tab.setAttribute("aria-selected", String(selected));
+        tab.tabIndex = selected ? 0 : -1;
+        elementById(tab.getAttribute("aria-controls")).hidden = !selected;
+      });
+      buildSections();
+      requestAnimationFrame(resizeVisible);
+      if (focus) tabs[index].focus();
+      if (updateHash) history.replaceState(null, "", "#" + tabs[index].getAttribute("aria-controls"));
+    }
+    function indexFromHash() {
+      return Math.max(0, tabs.findIndex(function (tab) { return "#" + tab.getAttribute("aria-controls") === location.hash; }));
+    }
+    tabs.forEach(function (tab, index) {
+      tab.addEventListener("click", function () { activate(index, false, true); });
+      tab.addEventListener("keydown", function (event) {
+        var next = event.key === "ArrowRight" ? (index + 1) % tabs.length
+          : event.key === "ArrowLeft" ? (index + tabs.length - 1) % tabs.length
+          : event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : null;
+        if (next !== null) { event.preventDefault(); activate(next, true, true); }
+      });
+    });
+    window.addEventListener("hashchange", function () { activate(indexFromHash(), false, false); });
+    window.addEventListener("resize", function () {
+      if (window.innerWidth === lastWidth) return;
+      lastWidth = window.innerWidth;
+      var root = document.querySelector('.viz-section:not([hidden]) .section-body');
+      if (root && root.emolView) root.emolView.render();
+    });
+    activate(indexFromHash(), false, false);
+    if (window.parent !== window) {
+      document.documentElement.classList.add("is-embedded");
+      var lastHeight = 0;
+      new ResizeObserver(function () {
+        var height = Math.ceil(document.body.getBoundingClientRect().height);
+        if (height !== lastHeight) {
+          lastHeight = height;
+          window.parent.postMessage({type: "emol:n2:resize", height: height}, location.origin);
+        }
+      }).observe(document.body);
+    }
+  }
 })();
 </script>
 </body>

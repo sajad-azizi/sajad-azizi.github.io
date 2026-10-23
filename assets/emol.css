@@ -1,0 +1,208 @@
+/* eMOL page only: keep the explorer spacious without changing other pages. */
+.emol-page main > section {
+  padding: 44px 0 24px;
+}
+
+.emol-page:has(#tab-n2[aria-selected="true"]) main.container {
+  width: min(1320px, calc(100% - 48px));
+}
+
+.emol-page .emol-intro {
+  margin-bottom: 26px;
+}
+
+.emol-page #emol-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 14px;
+  font-size: clamp(1.65rem, 2.5vw, 2rem);
+  letter-spacing: -.035em;
+}
+
+.emol-page #emol-title span {
+  color: var(--muted);
+  font-size: .56em;
+  font-weight: 500;
+  letter-spacing: -.01em;
+}
+
+.emol-page .emol-intro p {
+  color: var(--muted);
+  font-size: .9rem;
+}
+
+.emol-page .tabs {
+  gap: 8px;
+  padding-bottom: 18px;
+  margin-bottom: 26px;
+  border-bottom: 1px solid var(--border);
+}
+
+.emol-page .tab {
+  min-height: 42px;
+  padding: 8px 20px;
+  border-radius: 10px;
+}
+
+.emol-page .tab[aria-selected="true"] {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .05);
+}
+
+.emol-page #panel-n2 {
+  min-width: 0;
+}
+
+.emol-page .n2-panel-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px 24px;
+  margin-bottom: 18px;
+}
+
+.emol-page .n2-panel-heading h2 {
+  margin-bottom: 5px;
+  font-size: 1.1rem;
+  letter-spacing: -.02em;
+}
+
+.emol-page .n2-panel-heading h2 span {
+  margin-left: 8px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.emol-page .n2-panel-heading p {
+  font-size: .85rem;
+}
+
+.emol-page .n2-fullscreen {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+  box-sizing: border-box;
+  min-height: 42px;
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: .82rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.emol-page .n2-fullscreen:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.emol-page .n2-fullscreen:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.emol-page #panel-n2 .viz-frame {
+  box-sizing: border-box;
+  height: auto;
+  min-height: 0;
+  border-radius: 18px;
+  box-shadow: 0 6px 28px rgba(0, 0, 0, .04);
+}
+
+.emol-page #n2-explorer {
+  height: 1100px;
+}
+
+.emol-page .visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.emol-page footer {
+  padding-top: 30px;
+  font-size: .82rem;
+}
+
+@media (max-width: 1060px) {
+  .emol-page .nav {
+    flex-wrap: wrap;
+    padding-top: 14px;
+    padding-bottom: 10px;
+    gap: 8px;
+  }
+
+  .emol-page .nav nav {
+    width: 100%;
+  }
+
+  .emol-page .nav ul {
+    gap: 2px;
+  }
+
+  .emol-page .nav a {
+    padding: 8px 10px;
+  }
+}
+
+@media (max-width: 600px) {
+  .emol-page header {
+    position: static;
+  }
+
+  .emol-page .container,
+  .emol-page:has(#tab-n2[aria-selected="true"]) main.container {
+    width: calc(100% - 28px);
+  }
+
+  .emol-page main > section {
+    padding-top: 28px;
+  }
+
+  .emol-page .brand small {
+    font-size: .73rem;
+  }
+
+  .emol-page .nav a {
+    padding: 7px 9px;
+    font-size: .75rem;
+  }
+
+  .emol-page .emol-intro {
+    margin-bottom: 20px;
+  }
+
+  .emol-page #emol-title {
+    gap: 5px 10px;
+  }
+
+  .emol-page .tabs {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+    margin-bottom: 22px;
+  }
+
+  .emol-page .tab {
+    padding: 8px 6px;
+    font-size: .87rem;
+  }
+
+  .emol-page .n2-panel-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .emol-page #panel-n2 .viz-frame {
+    border-radius: 12px;
+  }
+}

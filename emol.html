@@ -6,10 +6,11 @@
   <title>eMOL — Sajad Azizi</title>
   <meta name="description" content="eMOL: electron–molecule scattering package by Sajad Azizi." />
   <link rel="stylesheet" href="assets/style.css" />
-  <script src="headerscript.js"></script>
+  <link rel="stylesheet" href="assets/emol.css" />
+  <script src="assets/headerscript.js"></script>
   <!--<link rel="stylesheet" href="assets/darkstyle.css" />-->
 </head>
-<body>
+<body class="emol-page">
   <header>
 <!--<button id="theme-toggle" type="button" aria-pressed="false" aria-label="Toggle dark mode">🌙 Dark mode</button>-->
     <div class="container nav">
@@ -29,9 +30,12 @@
     </div>
   </header>
   
-<main class="container stack" style="padding-top:-10px; top:auto; margin-top:-60px;">
+<main class="container stack">
   <section aria-labelledby="emol-title">
-    <h2 id="emol-title">eMOL — electron–molecule scattering</h2>
+    <div class="emol-intro">
+      <h1 id="emol-title">eMOL <span>electron–molecule scattering</span></h1>
+      <p>Explore the methods and molecular benchmarks.</p>
+    </div>
 
     <div class="tabs" role="tablist" aria-label="eMOL sections">
       <button type="button" class="tab" role="tab" id="tab-overview" aria-controls="panel-overview" aria-selected="true" data-tab="overview">Overview</button>
@@ -135,15 +139,16 @@
       </div>
     </div>
 
-    <div class="tabpanel card pad" id="panel-n2" role="tabpanel" aria-labelledby="tab-n2" tabindex="0" hidden>
-      <h3>N<sub>2</sub> benchmarks — 3&sigma;<sub>g</sub></h3>
-      <p class="muted">
-        Interactive explorer: energy curves, polar cuts, energy&ndash;angle map, and 3D angular distribution,
-        with a built-in self-test against the reference physics.
-        <a href="assets/viz/n2_3sigma_g_explorer.html" target="_blank" rel="noopener">Open full-screen ↗</a>
-      </p>
+    <div class="tabpanel" id="panel-n2" role="tabpanel" aria-labelledby="tab-n2" tabindex="0" hidden>
+      <div class="n2-panel-heading">
+        <div>
+          <h2>N<sub>2</sub> benchmark <span>3&sigma;<sub>g</sub></span></h2>
+          <p class="muted">Explore photoionization cross sections and angular distributions.</p>
+        </div>
+        <a class="n2-fullscreen" href="assets/viz/n2_3sigma_g_explorer.html" target="_blank" rel="noopener">Open full-screen <span aria-hidden="true">↗</span><span class="visually-hidden"> (opens in a new tab)</span></a>
+      </div>
       <div class="viz-frame">
-        <iframe title="N2 3sigma_g eMOL benchmark explorer" data-src="assets/viz/n2_3sigma_g_explorer.html"></iframe>
+        <iframe id="n2-explorer" title="Nitrogen N2 3sigma_g photoionization benchmark explorer" height="1100" data-src="assets/viz/n2_3sigma_g_explorer.html"></iframe>
       </div>
     </div>
 
@@ -160,7 +165,7 @@
       <p>© 2025 Sajad Azizi. All rights reserved.</p>
     </div>
   </footer>
-  <script src="assets/footerscript.js"></script>
   <script src="assets/tabs.js"></script>
+  <script src="assets/emol.js"></script>
 </body>
 </html>
