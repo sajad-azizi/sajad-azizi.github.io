@@ -222,6 +222,21 @@
 .emol-method-list h3 { font-size: 1.03rem; margin-block: 8px; }
 .emol-method-list p { font-size: .86rem; }
 .emol-method-list .section-number { font-size: .79rem; }
+.emol-references { border-top: 1px solid var(--border); padding-block: 42px; }
+.emol-references .section-heading { margin-bottom: 18px; }
+.emol-references h2 { font-size: 2.2rem; }
+.emol-references-intro { max-width: 76ch; color: var(--muted); font-size: .92rem; margin-bottom: 30px; }
+.emol-reference-group { display: grid; grid-template-columns: minmax(180px, .55fr) minmax(0, 1.45fr); gap: 35px; }
+.emol-reference-group + .emol-reference-group { margin-top: 28px; padding-top: 28px; border-top: 1px solid var(--border); }
+.emol-reference-category h3 { font-size: 1rem; margin-bottom: 6px; }
+.emol-reference-category p { font-size: .78rem; color: var(--muted); }
+.emol-reference-list { list-style: none; padding: 0; }
+.emol-reference-list li + li { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border); }
+.emol-reference-list h4 { font-size: 1rem; font-weight: 550; line-height: 1.5; }
+.emol-reference-list h4 a { color: var(--text); text-decoration: none; }
+.emol-reference-list h4 a:hover { color: var(--accent); text-decoration: underline; }
+.emol-reference-authors { margin-top: 9px; color: var(--muted); font-size: .82rem; }
+.emol-reference-venue { margin-top: 5px; color: var(--muted); font-size: .78rem; }
 .emol-benchmarks { border-top: 1px solid var(--border); padding-block: 42px; }
 .emol-benchmarks h2 { font-size: 2.2rem; }
 .emol-benchmark-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; }
@@ -250,6 +265,7 @@
   .emol-page #emol-title span { font-size: .34em; }
   .emol-page .tabs { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); }
   .emol-methods, .emol-benchmark-grid, .emol-validation { grid-template-columns: 1fr; gap: 30px; }
+  .emol-reference-group { grid-template-columns: 1fr; gap: 18px; }
   .emol-methods h2 { font-size: 2rem; }
   .emol-method-list { border-left: 0; border-top: 1px solid var(--border); padding: 30px 0 0; }
   .emol-benchmark-grid article { padding: 23px; }
