@@ -139,7 +139,8 @@ def emol_rows(source, browser_amplitudes):
                     "directional_sigma": directional, "route": point["route"], "at_pole": point["at_pole"],
                     "source": relative})
             count += 1
-    require(count == 35, "Incomplete eMOL cross-section coverage")
+    expected_count = sum(len(entries["onePhoton"]) for entries in amplitude["channels"].values())
+    require(count == expected_count and count > 0, "Incomplete eMOL cross-section coverage")
     return result, {"raw_dipoles_checked": count, "full_xyz_sigma_beta_identity_max_relative": worst,
                     "quadrature": "Exact real-harmonic sphere rule for polynomial degree 2(lmax+1)",
                     "amplitude_export_sha256": hashlib.sha256(browser_amplitudes.read_bytes()).hexdigest()}
@@ -183,7 +184,7 @@ def main():
             "The paper labels its cross-section axis Mb/sr while its caption says total. The 4π-scaled comparison is an explicit normalization diagnostic, not a physical correction and not integration over electron directions. Physical Mb/sr mode must not overlay the incompatible paper ordinate.",
             "Omitting the XUV y component is a diagnostic selection. No phase, energy shift or fitted scaling is applied.",
             "The independent reference covers X, b, A and c. Its broad curves use a 0.5 eV grid; the separate open checkpoint markers use local fine stencils and higher cutoff. They do not establish global derivative convergence.",
-            "eMOL cross-section markers use exact orientation quadrature of the raw amplitudes at 35 calculated energies, with full x,y,z or literal y omission. The full-component result is independently checked against σtotal(1+β)/(4π). The present eMOL campaign does not contain A-channel amplitudes.",
+            f"eMOL cross-section markers use exact orientation quadrature of the raw amplitudes at {checks['raw_dipoles_checked']} calculated energies, with full x,y,z or literal y omission. The full-component result is independently checked against σtotal(1+β)/(4π). The present eMOL campaign does not contain A-channel amplitudes.",
             "eMOL Wigner delays are not shown: no validated derivative export matches the required directional average. No derivative is invented from the sparse browser grid, and stored independent-angle or 4π-integrated averages are not used as along-polarization delays.",
             "Paper curves are digitized. Bridged segments are reconstructed; missing intervals, including the unresolved A-delay tail, must remain gaps.",
         ],

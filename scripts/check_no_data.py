@@ -9,6 +9,7 @@ the checks are portable with the website checkout and do not need HDF5 files.
 import argparse
 import cmath
 import csv
+from datetime import date
 import hashlib
 import json
 import math
@@ -19,6 +20,9 @@ import re
 AS = 24.188843265857
 EV = 27.211386245988
 COMPONENTS = ("p1", "m1", "0")
+# Published Fig. 3 samples stay fixed when calculated interleaved energies grow.
+PAPER_ORDERS = {"b": {18, 20, 22, 24, 26, 28}, "c": {22, 24, 26, 28}}
+BASELINE_ORDERS = {**PAPER_ORDERS, "X": PAPER_ORDERS["b"]}
 
 
 def check(condition, message):
@@ -69,6 +73,71 @@ def amplitude_files(directory):
             for q in COMPONENTS for s in COMPONENTS]
 
 
+def successful_run(directory):
+    done = directory / "RUN_DONE"
+    if not done.is_file() or not (directory / "run.log").is_file():
+        return False
+    result = re.search(r"\brc\s+(-?\d+)\b", done.read_text())
+    if result:
+        check(int(result[1]) == 0, "Failed production run may not be treated as an incomplete transfer: " + str(directory))
+    return result is not None
+
+
+def source_sidebands(source_root, campaign, channel, angular=False):
+    """Independent filesystem coverage audit, without importing an exporter.
+
+    Files still being produced do not count as exportable samples. Existing
+    ready products do, even when no measured or independent-reference point
+    exists at the same energy. This catches a stale export after new transfers.
+    """
+    ready, candidates = set(), set()
+    trees = [channel] + ([channel + "OFF"] if channel in ("b", "c") else [])
+    for tree in trees:
+        base = source_root / campaign / tree
+        sidebands = base / "sidebands"
+        saved = set()
+        for path in sidebands.glob("fig3_read_*.out"):
+            saved.update(re.findall(r"(Ef[0-9.]+) expansion\s+E_f", path.read_text()))
+        for directory in sidebands.glob("Ef*"):
+            if not directory.is_dir():
+                continue
+            relative = directory.relative_to(source_root).as_posix()
+            candidates.add(relative)
+            center = base / ("E%.6g" % float(directory.name[2:]))
+            identity_path = directory / "identity_tool.log"
+            if not successful_run(center) or not identity_path.is_file():
+                continue
+            gates = re.search(r"(\d+) gates, (\d+) failed", identity_path.read_text())
+            if not gates:
+                continue
+            check(int(gates[1]) > 0 and int(gates[2]) == 0,
+                  "Failed identity gates may not be treated as an incomplete transfer: " + str(directory))
+            if not all((source_root / path).is_file() for path in amplitude_files(relative)):
+                continue
+            if angular:
+                if not all((directory / ("lab_expansion_%d.h5" % angle)).is_file() for angle in (0, 90)):
+                    continue
+                if not all(any((directory / ("direction_%s_expansion.%s" % (direction, suffix))).is_file()
+                               for suffix in ("h5", "log")) for direction in ("Oend", "Nend", "perp")):
+                    continue
+            elif directory.name not in saved:
+                continue
+            ready.add(relative)
+    return ready, candidates
+
+
+def check_exclusions(entries, exported, candidates, source_prefix=""):
+    paths = [str(PurePosixPath(source_prefix) / row["source"]) for row in entries]
+    check(all(isinstance(row["reason"], str) and row["reason"].strip() for row in entries),
+          "Incomplete product has no reason")
+    check(not (set(paths) & exported), "An excluded product was also exported")
+    # Amplitude metadata also records partial one-photon runs; only require
+    # sideband exclusions to close against the independently discovered set.
+    sideband_paths = [path for path in paths if "/sidebands/Ef" in path]
+    check(len(sideband_paths) == len(set(sideband_paths)), "Duplicate incomplete-sideband record")
+    check(set(sideband_paths) == candidates - exported, "Unreported or stale sideband exclusion")
+
+
 def check_paper(paper, source_root):
     check(set(paper["channels"]) == {"b", "c", "X"}, "Unexpected ionic channels")
     check(paper["meta"]["origin"] == "expansion" and paper["provenance"]["constraint_set"] == "ion",
@@ -81,10 +150,13 @@ def check_paper(paper, source_root):
     for channel, rows in paper["channels"].items():
         orders = [row["order"] for row in rows]
         check(orders == sorted(set(orders)), "Repeated or unsorted sideband")
+        check(BASELINE_ORDERS[channel] <= set(orders), "An original production sample was lost")
         by_channel[channel] = {row["order"]: row for row in rows}
         for row in rows:
             close(row["photon"], row["order"] * paper["meta"]["omega_ev"], "Sideband energy inconsistency")
             check(row["constraint_set"] == "ion" and "/Xh/" not in row["source"], "Diagnostic hole set in production")
+            check(row["is_paper_sideband"] is (row["order"] % 2 == 0),
+                  "Interleaved calculated energy was labelled as a paper sideband")
             check(row["at_pole"] == (row["pole_distance"] < threshold), "Incorrect centre-run pole flag")
             check(0 <= row["contrast"] <= 1 and 0 <= row["omitted_contrast"] <= 1, "Invalid visibility")
             check(row["reader_output"] in hashes, "Unhashed saved reading")
@@ -93,6 +165,12 @@ def check_paper(paper, source_root):
             centre = PurePosixPath(row["source"]).parent.parent / ("E%.6g" % row["ef"])
             check(str(centre / "RUN_DONE") in hashes and str(centre / "run.log") in hashes, "Missing centre provenance")
             raw_count += 1
+        if source_root:
+            ready, candidates = source_sidebands(source_root, paper["provenance"]["campaign"], channel)
+            exported = {row["source"] for row in rows}
+            check(exported == ready, "Paper export does not cover the ready " + channel + " energy samples")
+            exclusions = [row for row in paper["meta"]["excluded_sidebands"] if row["channel"] == channel]
+            check_exclusions(exclusions, exported, candidates)
 
     relative_count = 0
     for channel, comparison in paper["comparisons"].items():
@@ -105,11 +183,16 @@ def check_paper(paper, source_root):
             for quantity in ("complete", "omitted", "fourpi"):
                 close(row[quantity], a[quantity] - x[quantity], "Incorrect relative delay", atol=1e-12)
             check(row["at_pole"] == (a["at_pole"] or x["at_pole"]), "Relative curve lost a pole flag")
+            check(row["is_paper_sideband"] is a["is_paper_sideband"] is x["is_paper_sideband"],
+                  "Relative curve changed the interleaved-energy classification")
             if row["at_pole"]:
                 pole_points.add((channel, row["order"]))
             relative_count += 1
         for name in ("measured", "reference"):
-            check(sorted(row["order"] for row in comparison[name]) == common_orders, "Incomplete " + name + " coverage")
+            orders = [row["order"] for row in comparison[name]]
+            check(len(orders) == len(set(orders)) and set(orders) == PAPER_ORDERS[channel],
+                  "The published " + name + " grid was extended or lost samples")
+            check(set(orders) <= set(common_orders), "The paper comparison lost a calculated reference energy")
         for row in comparison["measured"]:
             check(row["err_up"] > 0 and row["err_down"] > 0, "Invalid experimental uncertainty")
         check(any(row["err_up"] != row["err_down"] for row in comparison["measured"]), "Digitized error bars were symmetrized")
@@ -140,8 +223,7 @@ def check_paper(paper, source_root):
                       row["value"] == float(original["relative_delay_as"]) and
                       row["flag"] == original["flag"] and row["kinds"] == original["kinds_in_window"],
                       "Theory digitization or bridge flags were altered")
-    check(relative_count == 10 and raw_count == 16, "Incomplete Fig. 3 snapshot")
-    check(pole_points == {("b", 28), ("c", 22)}, "Unexpected poles in the audited campaign")
+    check({("b", 28), ("c", 22)} <= pole_points, "Original near-pole warnings were lost")
     validation = paper["meta"]["validation"]
     check(validation["passed"] and validation["reader_checks"] == 15, "Missing validated-reader checks")
     check(validation["raw_sidebands_checked"] == raw_count and
@@ -149,8 +231,11 @@ def check_paper(paper, source_root):
           validation["relative_points"] == relative_count, "Validation counts do not cover the data")
     check(validation["maximum_saved_delay_residual_as"] <= validation["saved_reading_tolerance"] and
           validation["maximum_saved_contrast_residual"] <= validation["saved_reading_tolerance"], "Saved reading precision failed")
-    check(paper["meta"]["snapshot"] == max(row["completed_at"][:10] for rows in paper["channels"].values() for row in rows),
-          "Snapshot date does not follow the run stamps")
+    latest_center = max(row["completed_at"][:10] for rows in paper["channels"].values() for row in rows)
+    check(paper["meta"]["latest_centre_completion"] == latest_center, "Latest centre-run date is incorrect")
+    check(date.fromisoformat(paper["meta"]["snapshot"]) >= date.fromisoformat(latest_center) and
+          "export date" in paper["meta"]["snapshot_description"],
+          "The data snapshot is not identified as a validated export date")
     return hashes
 
 
@@ -210,6 +295,7 @@ def check_amplitudes(data, paper, paper_hashes, source_root):
     one_count = two_count = 0
     for channel, content in data["channels"].items():
         points = content["onePhoton"]
+        check(len(points) >= {"b": 13, "c": 9, "X": 13}[channel], "Original one-photon coverage was lost")
         check(all(a["energy_ev"] < b["energy_ev"] for a, b in zip(points, points[1:])), "Duplicate/unsorted one-photon energy")
         for point in points:
             n = basis(point)
@@ -226,6 +312,16 @@ def check_amplitudes(data, paper, paper_hashes, source_root):
             check(point["at_pole"] == (point["pole_distance_rad"] < paper["provenance"]["pole_eigenphase_threshold_rad"]),
                   "Incorrect one-photon pole flag")
             one_count += 1
+        if source_root:
+            # Production main-route samples precede OFF redos at the same
+            # named energy; the exporter may not silently ignore ready points.
+            selected = {}
+            for tree in [channel] + ([channel + "OFF"] if channel in ("b", "c") else []):
+                for path in (source_root / prefix / tree).glob("E*/dipole.h5"):
+                    if successful_run(path.parent):
+                        selected.setdefault(path.parent.name, path.relative_to(source_root).as_posix())
+            exported = {str(PurePosixPath(prefix) / point["source"]) for point in points}
+            check(exported == set(selected.values()), "Amplitude export lost or added a ready one-photon sample")
         paper_rows = {r["order"]: r for r in paper["channels"][channel]}
         check([r["order"] for r in content["sidebands"]] == sorted(paper_rows), "Amplitude sideband coverage differs")
         for point in content["sidebands"]:
@@ -258,10 +354,18 @@ def check_amplitudes(data, paper, paper_hashes, source_root):
                 close(lab["tau_R_as"], lab["tau_1_as"] + lab["tau_cc_as"], "Lab delay split failed")
                 check(0 <= lab["fringe_depth"] <= 1, "Invalid lab contrast")
             two_count += 1
-    check(one_count == 35 and two_count == 16, "Incomplete discrete amplitude snapshot")
+        if source_root:
+            ready, candidates = source_sidebands(source_root, prefix, channel, angular=True)
+            exported = {str(PurePosixPath(prefix) / row["source"]) for row in content["sidebands"]}
+            check(exported == ready, "Amplitude export does not cover ready " + channel + " energy samples")
+            exclusions = [row for row in data["meta"]["excluded_incomplete"]
+                          if row["source"].split("/", 1)[0] in {channel, channel + "OFF"}]
+            check_exclusions(exclusions, exported, candidates, prefix)
+    check(two_count == paper["meta"]["validation"]["raw_sidebands_checked"], "Incomplete two-photon amplitude coverage")
     checks = data["meta"]["validation"]["checks"]
     check(checks["dipole_prefactors"] == one_count and checks["lab_interference_delays"] == 2 * two_count,
           "Amplitude validation does not cover every exported energy")
+    check(checks["sideband_identity_gates"] == two_count, "Missing overlap-identity checks")
     check(checks["stored_direction_delays"] == checks["stored_direction_strengths"] and
           checks["stored_direction_delays"] + checks["stored_direction_refusals"] == 3 * two_count,
           "Stored directional checks or node refusals are missing")
@@ -387,7 +491,9 @@ def check_fig4(data, amplitudes, source_root, amplitude_path):
                     expected = point["sigma_mb"]["avg"] * (1 + point["beta"]) / (4 * math.pi)
                     close(row["directional_sigma"], expected, "Fig. 4 directional cross section does not close")
                     computed += 1
-    check(computed == data["meta"]["validation"]["raw_dipoles_checked"] == 35, "Incomplete Fig. 4 validation")
+    check(computed == data["meta"]["validation"]["raw_dipoles_checked"] ==
+          sum(len(channel["onePhoton"]) for channel in amplitudes["channels"].values()),
+          "Incomplete Fig. 4 validation")
     a_delay = data["channels"]["A"]["paper"]["delay"]
     check(a_delay[-1]["photon"] < 40 and any(b["photon"] - a["photon"] > .15 for a, b in zip(a_delay, a_delay[1:])),
           "Unresolved A-delay digitization intervals were filled")
@@ -404,17 +510,18 @@ def main():
     args = parser.parse_args()
     paper = load_data(args.paper, "NO_PAPER_DATA")
     hashes = check_paper(paper, args.source_root)
-    print("PASS: 10 relative delays, origin and pole flags, digitization, uncertainty and source contracts")
+    relative_count = sum(len(comparison["emol"]) for comparison in paper["comparisons"].values())
+    print("PASS: %d relative delays; paper grids, interleaved energies, origins, pole flags and source contracts" % relative_count)
     if not args.paper_only:
         amplitudes = load_data(args.amplitudes, "NO_AMPLITUDE_DATA")
         one, two = check_amplitudes(amplitudes, paper, hashes, args.source_root)
         vectors = check_vectors(amplitudes)
-        print("PASS: %d dipoles and %d sidebands; Parseval, lab tensor average and common-source identities" % (one, two))
+        print("PASS: %d dipoles and %d two-photon energy samples; Parseval, lab tensor average and common-source identities" % (one, two))
         print("PASS: independent real-harmonic reconstruction of %d one-photon and %d two-photon dense reference vectors" %
               (vectors["onePhoton"], vectors["twoPhoton"]))
         fig4 = load_data(args.fig4, "NO_FIG4_DATA")
         check_fig4(fig4, amplitudes, args.source_root, args.amplitudes)
-        print("PASS: Fig. 4 four-state references, explicit 4π normalization, 35 eMOL cross sections and no unmatched Wigner substitution")
+        print("PASS: Fig. 4 four-state references, explicit 4π normalization, %d eMOL cross sections and no unmatched Wigner substitution" % one)
     if args.source_root:
         print("PASS: every source SHA-256 and original digitized CSV field checked against the research checkout")
 

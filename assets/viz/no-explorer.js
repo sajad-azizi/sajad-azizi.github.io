@@ -5,6 +5,8 @@
   const RAD = Math.PI / 180;
   const COLORS = {emol: '#117c7d', measured: '#334b64', theory: '#cb8652', reference: '#8d739d', b: '#137f80', c: '#b66d45', X: '#6676a3'};
   const LABELS = {b: 'b ³Π', c: 'c ³Π', X: 'X ¹Σ⁺'};
+  const DATA_REVISION = '20261026-no-refresh';
+  const sampleLabel = order => order % 2 === 0 ? 'SB' + order : 'Photon index ' + order;
   const CONFIG = {responsive: false, displaylogo: false, scrollZoom: false, modeBarButtonsToRemove: ['select2d', 'lasso2d', 'autoScale2d'], toImageButtonOptions: {format: 'png', scale: 2}};
   const built = new Set();
   let active = 'paper', amplitudePromise, frameGuide, resizeTimer;
@@ -91,8 +93,8 @@
     });
   }
   function downloadPaper(data) {
-    const head = ['channel_difference', 'sideband', 'photon_energy_eV', 'full_xyz_delay_as', 'y_omitted_diagnostic_as', 'all_directions_4pi_as', 'near_K_pole', 'route', 'origin'];
-    const rows = [head, ...['b', 'c'].flatMap(ch => data.comparisons[ch].emol.map(p => [ch + '-X', p.order, p.photon, p.complete, p.omitted, p.fourpi, p.at_pole, p.route, 'expansion']))];
+    const head = ['channel_difference', 'photon_energy_index', 'sample_kind', 'photon_energy_eV', 'full_xyz_delay_as', 'y_omitted_diagnostic_as', 'all_directions_4pi_as', 'near_K_pole', 'route', 'origin'];
+    const rows = [head, ...['b', 'c'].flatMap(ch => data.comparisons[ch].emol.map(p => [ch + '-X', p.order, p.order % 2 === 0 ? 'sideband' : 'interleaved_calculation', p.photon, p.complete, p.omitted, p.fourpi, p.at_pole, p.route, 'expansion']))];
     const url = URL.createObjectURL(new Blob([rows.map(r => r.join(',')).join('\n') + '\n'], {type: 'text/csv;charset=utf-8'}));
     const a = node('a'); a.href = url; a.download = 'NO-Fig3-eMOL-' + data.meta.snapshot + '.csv'; a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
@@ -121,7 +123,10 @@
       charts[ch] = node('div', 'no-plot'); charts[ch].setAttribute('aria-label', 'Relative delay ' + ch + ' minus X versus photon energy');
       card.append(caption, charts[ch]); pair.append(card);
     }
-    note(root, '◆ Filled diamonds: eMOL. ◇ Hollow diamonds: near-pole centre runs (b SB28; c SB22). Experimental bars are digitized 1σ uncertainties. Dotted theory segments reconstruct parts obscured by markers.');
+    const poleLabels = ['b', 'c'].flatMap(ch => data.comparisons[ch].emol.filter(p => p.at_pole).map(p => ch + ' ' + sampleLabel(p.order)));
+    note(root, '◆ Filled diamonds: eMOL. ◇ Hollow diamonds: near-pole centre runs' + (poleLabels.length ? ' (' + poleLabels.join('; ') + ')' : '') + '. Experimental bars are digitized 1σ uncertainties. Dotted theory segments reconstruct parts obscured by markers.');
+    const intermediateCount = ['b', 'c'].reduce((n, ch) => n + data.comparisons[ch].emol.filter(p => p.order % 2 !== 0).length, 0);
+    if (intermediateCount) note(root, intermediateCount + ' additional comparison points sample intermediate photon energies. These are calculations; the experimental points remain those digitized from the paper.');
     const fig4 = node('div', 'no-fig4'); fig4.id = 'fig4-root'; root.append(fig4);
     const interpretation = node('div', 'no-interpretation');
     for (const [title, text] of [['What is being tested', 'The electronic-state delay differences at a fixed N–O separation of 1.15 Å. The calculation uses randomly oriented molecules and an 800 nm probe.'], ['What the comparison shows', 'The published theory is not fully reproduced by the present calculations. Agreement between eMOL and the independent calculation is useful evidence, but does not resolve the remaining differences with the paper.']]) { const card = node('div'); card.append(node('h3', '', title), node('p', '', text)); interpretation.append(card); }
@@ -130,11 +135,12 @@
     for (const text of data.methodnotes) note(methods, text, '');
     note(methods, 'The paper’s time-of-flight detector is approximately aligned with the polarization; the displayed along-polarization calculation uses the ideal direction. This is the electronic-state comparison in Figure 3, not the vibrationally resolved comparison in Figure 5.', '');
     root.append(methods);
-    const tableDetails = node('details', 'reading-guide'); tableDetails.append(node('summary', '', 'Inspect the 10 eMOL comparison points'));
+    const comparisonCount = ['b', 'c'].reduce((n, ch) => n + data.comparisons[ch].emol.length, 0);
+    const tableDetails = node('details', 'reading-guide'); tableDetails.append(node('summary', '', 'Inspect the ' + comparisonCount + ' eMOL comparison points'));
     const wrap = node('div', 'no-table-wrap'), table = node('table', 'no-table');
-    const tr = node('tr'); for (const title of ['Difference / SB', 'Photon / eV', 'Full XYZ / as', 'Y omitted / as', '4π / as', 'Route']) tr.append(node('th', '', title));
+    const tr = node('tr'); for (const title of ['Difference / sample', 'Photon / eV', 'Full XYZ / as', 'Y omitted / as', '4π / as', 'Route']) tr.append(node('th', '', title));
     const thead = node('thead'); thead.append(tr); table.append(thead); const tbody = node('tbody');
-    for (const ch of ['b', 'c']) for (const p of data.comparisons[ch].emol) { const r = node('tr'); for (const value of [ch + '−X / ' + p.order + (p.at_pole ? ' ◇' : ''), p.photon.toFixed(4), p.complete.toFixed(2), p.omitted.toFixed(2), p.fourpi.toFixed(2), p.route]) r.append(node('td', '', value)); tbody.append(r); }
+    for (const ch of ['b', 'c']) for (const p of data.comparisons[ch].emol) { const r = node('tr'); for (const value of [ch + '−X / ' + sampleLabel(p.order) + (p.at_pole ? ' ◇' : ''), p.photon.toFixed(4), p.complete.toFixed(2), p.omitted.toFixed(2), p.fourpi.toFixed(2), p.route]) r.append(node('td', '', value)); tbody.append(r); }
     table.append(tbody); wrap.append(table); tableDetails.append(wrap); root.append(tableDetails);
     async function draw() {
       const fourpi = state.convention === 'fourpi';
@@ -147,7 +153,7 @@
         if (!fourpi && state.theory) traces.push(...theoryTraces(comp.theory));
         if (!fourpi && state.measured) traces.push(paperTrace(comp.measured, 'value', 'Experiment · digitized', COLORS.measured, 'circle', {error_y: {type: 'data', symmetric: false, array: comp.measured.map(p => p.err_up), arrayminus: comp.measured.map(p => p.err_down), color: COLORS.measured, thickness: 1.2, width: 3}, marker: {color: COLORS.measured, size: 7}}));
         if (!fourpi && state.reference) traces.push(paperTrace(comp.reference, state.convention, 'Independent ePolyScat + cc', COLORS.reference, 'triangle-up-open', {marker: {color: COLORS.reference, symbol: 'triangle-up-open', size: 12, line: {width: 1.5, color: COLORS.reference}}}));
-        if (state.emol) traces.push(paperTrace(comp.emol, state.convention, 'eMOL', COLORS.emol, 'diamond', {marker: {color: COLORS.emol, size: 10, symbol: comp.emol.map(p => p.at_pole ? 'diamond-open' : 'diamond'), line: {width: 1.8, color: COLORS.emol}}, customdata: comp.emol.map(p => ['SB' + p.order, p.route + (p.at_pole ? ' · near K pole' : '')]), hovertemplate: 'eMOL · %{customdata[0]}<br>%{x:.4f} eV · %{y:.2f} as<br>%{customdata[1]}<extra></extra>'}));
+        if (state.emol) traces.push(paperTrace(comp.emol, state.convention, 'eMOL', COLORS.emol, 'diamond', {marker: {color: COLORS.emol, size: 10, symbol: comp.emol.map(p => p.at_pole ? 'diamond-open' : 'diamond'), line: {width: 1.8, color: COLORS.emol}}, customdata: comp.emol.map(p => [sampleLabel(p.order), p.route + (p.at_pole ? ' · near K pole' : '') + (p.order % 2 ? ' · interleaved calculation' : '')]), hovertemplate: 'eMOL · %{customdata[0]}<br>%{x:.4f} eV · %{y:.2f} as<br>%{customdata[1]}<extra></extra>'}));
         return plot(charts[ch], traces, {height: 370, margin: {l: 57, r: 15, t: 20, b: 52}, xaxis: {title: 'Sideband photon energy (eV)', range: ch === 'b' ? [26.5, 45] : [33, 45], gridcolor: '#eaf0f3', zeroline: false, dtick: 3}, yaxis: {title: 'Relative delay (as)', range: [-140, 140], tickvals: [-120, -60, 0, 60, 120], gridcolor: '#eaf0f3', zerolinecolor: '#bccbd3'}});
       }));
     }
@@ -234,7 +240,7 @@
 
   async function amplitudes() {
     if (!amplitudePromise) amplitudePromise = new Promise((resolve, reject) => {
-      const script = node('script'); script.src = 'no-amplitude-data.js';
+      const script = node('script'); script.src = 'no-amplitude-data.js?v=' + DATA_REVISION;
       script.onload = () => {
         try {
           if (!window.NO_AMPLITUDE_DATA || !window.NOPhysics) throw new Error('The NO amplitude data or numerical evaluator is missing.');
@@ -300,13 +306,13 @@
       const ps = points(); state.index = Math.floor(ps.length / 2);
       if (energySelect) {
         energySelect.replaceChildren();
-        ps.forEach((p, i) => { const opt = node('option', '', (p.order ? 'SB' + p.order + ' · ' : '') + p.energy_ev.toFixed(3) + ' eV' + (/box/i.test(p.route) ? ' · box' : '')); opt.value = i; energySelect.append(opt); });
+        ps.forEach((p, i) => { const opt = node('option', '', (p.order ? sampleLabel(p.order) + ' · ' : '') + p.energy_ev.toFixed(3) + ' eV' + (/box/i.test(p.route) ? ' · box' : '')); opt.value = i; energySelect.append(opt); });
         energySelect.value = String(state.index);
       }
     }
     async function draw() {
       const delay = state.quantity === 'delay', ps = points(), p = ps[state.index], eps = NOPhysics.polarization(state.alpha * RAD, state.beta * RAD);
-      w.context.textContent = LABELS[state.channel] + ' · ' + (kind === 'map' ? ps.length + ' discrete energies' : (p.order ? 'SB' + p.order + ' · ' : '') + p.energy_ev.toFixed(4) + ' eV electron energy · ' + p.route) + ' · α ' + state.alpha + '° / β ' + state.beta + '°' + (kind === 'surface' ? '' : ' / φ ' + state.phi + '°');
+      w.context.textContent = LABELS[state.channel] + ' · ' + (kind === 'map' ? ps.length + ' discrete energies' : (p.order ? sampleLabel(p.order) + ' · ' : '') + p.energy_ev.toFixed(4) + ' eV electron energy · ' + p.route) + ' · α ' + state.alpha + '° / β ' + state.beta + '°' + (kind === 'surface' ? '' : ' / φ ' + state.phi + '°');
       if (kind === 'map') {
         const xs = [], ys = [], values = [], hover = [];
         for (const point of ps) {
@@ -314,7 +320,7 @@
           for (let angle = 0; angle <= 180; angle += 3) {
             const value = f(angle * RAD, state.phi * RAD), v = delay ? (value.valid ? value.delay_as : null) : value;
             if (!Number.isFinite(v)) continue;
-            xs.push(angle); ys.push(point.energy_ev); values.push(v); hover.push(point.order ? 'SB' + point.order : point.route);
+            xs.push(angle); ys.push(point.energy_ev); values.push(v); hover.push(point.order ? sampleLabel(point.order) : point.route);
           }
         }
         const limit = delay ? colorLimit(values) : Math.max(...values, 1e-20);
@@ -388,10 +394,10 @@
       const traces = channels.map(ch => {
         const points = along ? NO_PAPER_DATA.channels[ch] : data.channels[ch].sidebands;
         const key = {total: 'tau_R_as', one: 'tau_1_as', cc: 'tau_cc_as'}[state.quantity];
-        return {type: 'scatter', mode: 'markers', name: LABELS[ch], x: points.map(p => p.photon ?? p.photon_ev), y: points.map(p => along ? p.complete : (p.lab[state.field]?.[key] ?? null)), marker: {color: COLORS[ch], size: 9, symbol: points.map(p => p.at_pole ? 'diamond-open' : 'diamond'), line: {color: COLORS[ch], width: 1.5}}, customdata: points.map(p => 'SB' + p.order), hovertemplate: LABELS[ch] + ' · %{customdata}<br>%{x:.4f} eV<br>%{y:.2f} as<extra></extra>'};
+        return {type: 'scatter', mode: 'markers', name: LABELS[ch], x: points.map(p => p.photon ?? p.photon_ev), y: points.map(p => along ? p.complete : (p.lab[state.field]?.[key] ?? null)), marker: {color: COLORS[ch], size: 9, symbol: points.map(p => p.at_pole ? 'diamond-open' : 'diamond'), line: {color: COLORS[ch], width: 1.5}}, customdata: points.map(p => sampleLabel(p.order)), hovertemplate: LABELS[ch] + ' · %{customdata}<br>%{x:.4f} eV<br>%{y:.2f} as<extra></extra>'};
       });
       w.context.textContent = along ? 'Random molecular orientation · electron along polarization · parallel XUV/IR · full x,y,z amplitudes.' : 'Random molecular orientation · electron directions integrated over 4π · XUV–IR angle ' + state.field + '°.';
-      extra.textContent = along ? 'These are the per-channel readings used in the opening comparison. Subtract X at the same sideband photon energy to obtain b−X and c−X.' : 'These are stored 4π lab averages, a different detection geometry from Figure 3. The remainder τR − τ1 is a stored decomposition of the total; it is not an additional correction to it.';
+      extra.textContent = along ? 'These are the per-channel readings used in the opening comparison. Subtract X at the same photon energy to obtain b−X and c−X. Intermediate calculations use photon-energy indices rather than measured sideband labels.' : 'These are stored 4π lab averages, a different detection geometry from Figure 3. The remainder τR − τ1 is a stored decomposition of the total; it is not an additional correction to it.';
       await plot(w.chart, traces, {height: 430, showlegend: true, legend: {orientation: 'h', y: 1.12}, margin: {l: 65, r: 20, t: 40, b: 55}, xaxis: {title: 'Sideband photon energy (eV)', gridcolor: '#eaf0f3'}, yaxis: {title: 'Delay (as)', gridcolor: '#eaf0f3', zerolinecolor: '#b9c9d1'}});
     }
     await draw();
@@ -436,8 +442,9 @@
     if (!validation.passed) throw new Error('The exported paper dataset did not pass its reader checks.');
     $('selftest-badge').className = 'selftest selftest-pass';
     $('snapshot-date').textContent = 'Data snapshot · ' + new Date(NO_PAPER_DATA.meta.snapshot + 'T00:00:00Z').toLocaleDateString('en-GB', {day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC'});
-    $('selftest-text').textContent = 'Reader validated · 16 sidebands checked';
-    $('selftest-detail').textContent = validation.reader_checks + ' reader checks passed during export. ' + validation.raw_sidebands_checked + ' sidebands were recalculated from ' + validation.raw_amplitude_files_checked + ' amplitude files and reproduced the saved readings within rounding precision. This verifies data handling, not agreement with the published theory. Angular views run additional browser checks when opened.';
+    $('sample-count').textContent = validation.raw_sidebands_checked;
+    $('selftest-text').textContent = 'Reader validated · ' + validation.raw_sidebands_checked + ' energy samples checked';
+    $('selftest-detail').textContent = validation.reader_checks + ' reader checks passed during export. ' + validation.raw_sidebands_checked + ' two-photon energy samples were recalculated from ' + validation.raw_amplitude_files_checked + ' amplitude files and reproduced the saved readings within rounding precision. This verifies data handling, not agreement with the published theory. Angular views run additional browser checks when opened.';
     const tabs = [...document.querySelectorAll('.no-nav [role="tab"]')];
     tabs.forEach((tab, index) => {
       tab.addEventListener('click', guarded(() => activate(tab.id.slice(5))));

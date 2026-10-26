@@ -67,9 +67,10 @@ class Export:
         self.root = root
         self.files = set()
         self.tests = {"onePhoton": [], "twoPhoton": []}
+        self.excluded = []
         self.checks = {"dipole_prefactors": 0, "stored_direction_delays": 0,
                        "stored_direction_strengths": 0, "lab_interference_delays": 0,
-                       "stored_direction_refusals": 0}
+                       "stored_direction_refusals": 0, "sideband_identity_gates": 0}
         self.worst = {"direction_delay_as": 0.0, "direction_strength_relative": 0.0,
                       "dipole_prefactor_relative": 0.0, "lab_delay_as": 0.0}
         self.ca = module("comphys_analysis", self.add(root / CAMPAIGN / "wf1/library/comphys_analysis.py"))
@@ -91,6 +92,58 @@ class Export:
     def manifest(self):
         return [{"path": p.relative_to(self.root).as_posix(),
                  "sha256": hashlib.sha256(p.read_bytes()).hexdigest()} for p in sorted(self.files)]
+
+    def incomplete(self, path, reason):
+        self.excluded.append({"source": self.relative(path), "reason": reason})
+        return False
+
+    def complete_run(self, directory):
+        done = directory / "RUN_DONE"
+        if not done.is_file():
+            return self.incomplete(directory, "Centre run completion record is not available")
+        require(re.search(r"\brc 0\b", self.add(done).read_text()) is not None,
+                "Centre run did not complete successfully: " + str(directory))
+        if not (directory / "run.log").is_file():
+            return self.incomplete(directory, "Centre run log is not available")
+        return True
+
+    def complete_sideband(self, directory):
+        """Keep partial transfers/running jobs out of a published snapshot.
+
+        A complete set still goes through all strict scientific checks below;
+        a failed numerical invariant must abort export, never silently pass.
+        """
+        energy = float(directory.name[2:])
+        centers = [p for p in directory.parent.parent.glob("E*") if p.is_dir()]
+        center = min(centers, key=lambda p: abs(float(p.name[1:]) - energy)) if centers else None
+        if center is None or abs(float(center.name[1:]) - energy) >= 1e-3:
+            return self.incomplete(directory, "Matching centre run is not available")
+        if not self.complete_run(center):
+            return self.incomplete(directory, "Matching centre run is incomplete")
+        identity_path = directory / "identity_tool.log"
+        if not identity_path.is_file():
+            return self.incomplete(directory, "Overlap-identity gate report is not available")
+        identity = self.add(identity_path).read_text()
+        gates = re.search(r"(\d+) gates, (\d+) failed", identity)
+        if not gates:
+            return self.incomplete(directory, "Overlap-identity gate report is incomplete")
+        require(int(gates[2]) == 0 and int(gates[1]) > 0,
+                "Overlap-identity gates did not pass: " + str(directory))
+        try:
+            required = [Path(self.reader.amplitude_file(str(directory), q, s))
+                        for q in self.reader.COMPONENTS for s in self.reader.COMPONENTS]
+        except FileNotFoundError:
+            return self.incomplete(directory, "Incomplete nine-component amplitude set")
+        required += [directory / ("lab_expansion_%d.h5" % angle) for angle in (0, 90)]
+        missing = [p.name for p in required if not p.is_file()]
+        for name in ("Oend", "Nend", "perp"):
+            stem = "direction_%s_expansion" % name
+            if not (directory / (stem + ".h5")).is_file() and not (directory / (stem + ".log")).is_file():
+                missing.append(stem + ".h5 or refusal log")
+        if missing:
+            return self.incomplete(directory, "Missing products: " + ", ".join(missing))
+        self.checks["sideband_identity_gates"] += 1
+        return True
 
     def pole(self, directory):
         text = self.add(directory / "run.log").read_text(errors="replace")
@@ -198,6 +251,8 @@ class Export:
         for tree in [channel] + ([channel + "OFF"] if channel in ("b", "c") else []):
             route = "box" if tree.endswith("OFF") or tree == "X" else "far field"
             for path in sorted((root / tree).glob("E*/dipole.h5")):
+                if not self.complete_run(path.parent):
+                    continue
                 with self.read(path) as f:
                     energy = float(f["energy"][()]) * EV
                 # The main route takes precedence at overlapping redo energies.
@@ -218,7 +273,7 @@ class Export:
         for tree in [channel] + ([channel + "OFF"] if channel in ("b", "c") else []):
             route = "box" if tree.endswith("OFF") or tree == "X" else "far field"
             for directory in sorted((root / tree / "sidebands").glob("Ef*")):
-                if directory.is_dir():
+                if directory.is_dir() and self.complete_sideband(directory):
                     sb, absorption, emission = self.sideband(directory, route, channel)
                     sidebands.append((sb, absorption, emission))
         sidebands.sort(key=lambda row: row[0]["order"])
@@ -288,7 +343,8 @@ def main():
         "channel_threshold": THRESHOLD, "node_condition_min": CONDITION_MIN,
         "node_intensity_relative_min": INTENSITY_MIN, "energy_policy": "discrete computed energies; no energy interpolation or derivatives",
         "lab_acceptance": "random molecular orientations, all electron directions collected (4pi)",
-        "one_photon_delay_note": "Directional energy derivatives are not exported from this sparse ladder; the b along-polarization phase unwrap was refused.",
+        "one_photon_delay_note": "No validated directional derivative export is available. Stored independent-angle averages are not substituted for along-polarization delays.",
+        "excluded_incomplete": export.excluded,
         "validation": {"checks": export.checks, "worst_residuals": export.worst}, "sources": export.manifest()},
         "channels": channels, "selftests": export.tests}
     rendered = "/* Generated by scripts/export_no_amplitudes.py; scientific sources are read-only. */\nwindow.NO_AMPLITUDE_DATA=" + json.dumps(payload, separators=(",", ":"), ensure_ascii=False, allow_nan=False) + ";\n"
@@ -296,7 +352,7 @@ def main():
     args.output.write_text(rendered)
     print(json.dumps({"output_bytes": len(rendered.encode()), "channels": {k: {"dipoles": len(v["onePhoton"]),
         "sidebands": len(v["sidebands"])} for k, v in channels.items()}, "validation": payload["meta"]["validation"],
-        "browser_vectors": {k: len(v) for k, v in export.tests.items()}}, indent=2))
+        "browser_vectors": {k: len(v) for k, v in export.tests.items()}, "excluded_incomplete": export.excluded}, indent=2))
 
 
 if __name__ == "__main__":

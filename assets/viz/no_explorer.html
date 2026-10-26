@@ -7,13 +7,13 @@
   <meta name="description" content="An eMOL reproduction study of nitric oxide photoionization: compare Figures 3 and 4 with calculated delays and cross sections, then explore the molecular observables.">
   <title>NO · Paper comparison & molecular explorer — eMOL</title>
   <link rel="stylesheet" href="molecule-explorer.css">
-  <link rel="stylesheet" href="no-explorer.css?v=20261026-fig4">
+  <link rel="stylesheet" href="no-explorer.css?v=20261026-no-refresh">
   <script defer src="plotly-2.35.2.min.js"></script>
-  <script defer src="no-paper-data.js?v=20261026-fig4"></script>
-  <script defer src="no-fig4-data.js"></script>
+  <script defer src="no-paper-data.js?v=20261026-no-refresh"></script>
+  <script defer src="no-fig4-data.js?v=20261026-no-refresh"></script>
   <script defer src="no-physics.js"></script>
   <script defer src="molecule-frames.js"></script>
-  <script defer src="no-explorer.js?v=20261026-fig4"></script>
+  <script defer src="no-explorer.js?v=20261026-no-refresh"></script>
 </head>
 <body class="no-explorer" data-molecule="no">
   <a class="skip-link" href="#section-paper">Skip to the paper comparison</a>
@@ -23,7 +23,7 @@
       <div class="page-header-text">
         <div class="title-line"><h1>Nitric oxide <span>NO</span></h1><span class="orbital">Three ionic channels</span></div>
         <p class="page-summary">Start with the paper. Then explore the amplitudes behind the delay: their energy, direction and polarization dependence.</p>
-        <div class="dataset-facts"><span><strong>b ³Π · c ³Π · X ¹Σ⁺</strong></span><span><strong>800 nm</strong> probe</span><span><strong>16</strong> calculated sidebands</span></div>
+        <div class="dataset-facts"><span><strong>b ³Π · c ³Π · X ¹Σ⁺</strong></span><span><strong>800 nm</strong> probe</span><span><strong id="sample-count">…</strong> two-photon energy samples</span></div>
       </div>
       <svg class="molecule-mark" viewBox="0 0 240 110" role="img" aria-label="Schematic nitric oxide molecule: nitrogen bonded to oxygen">
         <defs><radialGradient id="nitrogen"><stop offset="0" stop-color="#d8e8f5"/><stop offset="1" stop-color="#9fb9d4"/></radialGradient><radialGradient id="oxygen"><stop offset="0" stop-color="#f9e3dc"/><stop offset="1" stop-color="#d5a99d"/></radialGradient></defs>
@@ -59,6 +59,6 @@
     <section class="viz-section" id="section-lab" role="tabpanel" aria-labelledby="view-lab" tabindex="0" hidden><div class="section-header"><div><h2>From a molecule to a gas</h2><p class="section-lead">Random molecular orientation and electron detection geometry are separate choices. Compare the available averages below.</p></div></div><div id="lab-root"></div></section>
     <section class="viz-section" id="section-frames" role="tabpanel" aria-labelledby="view-frames" tabindex="0" hidden><div class="section-header"><div><h2>One molecule, two frames</h2><p class="section-lead">Move α, β, γ, ϑ and φ to follow the polarization and the outgoing electron in both coordinate systems.</p></div></div><div id="frames-root" data-molecule="no"></div></section>
   </main>
-  <footer class="explorer-footer"><span>eMOL <span aria-hidden="true">/</span> NO · b, c & X</span><span id="snapshot-date">Data snapshot · 25 October 2026</span></footer>
+  <footer class="explorer-footer"><span>eMOL <span aria-hidden="true">/</span> NO · b, c & X</span><span id="snapshot-date">Validated local data snapshot</span></footer>
 </body>
 </html>
