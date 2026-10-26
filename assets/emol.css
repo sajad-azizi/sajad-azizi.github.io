@@ -3,7 +3,7 @@
   padding: 44px 0 24px;
 }
 
-.emol-page:has(:is(#tab-n2, #tab-h2o)[aria-selected="true"]) main.container {
+.emol-page:has(:is(#tab-n2, #tab-h2o, #tab-no)[aria-selected="true"]) main.container {
   width: min(1320px, calc(100% - 48px));
 }
 
@@ -49,11 +49,11 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, .05);
 }
 
-.emol-page :is(#panel-n2, #panel-h2o) {
+.emol-page :is(#panel-n2, #panel-h2o, #panel-no) {
   min-width: 0;
 }
 
-.emol-page :is(.n2-panel-heading, .h2o-panel-heading) {
+.emol-page :is(.n2-panel-heading, .h2o-panel-heading, .no-panel-heading) {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -61,23 +61,23 @@
   margin-bottom: 18px;
 }
 
-.emol-page :is(.n2-panel-heading, .h2o-panel-heading) h2 {
+.emol-page :is(.n2-panel-heading, .h2o-panel-heading, .no-panel-heading) h2 {
   margin-bottom: 5px;
   font-size: 1.1rem;
   letter-spacing: -.02em;
 }
 
-.emol-page :is(.n2-panel-heading, .h2o-panel-heading) h2 span {
+.emol-page :is(.n2-panel-heading, .h2o-panel-heading, .no-panel-heading) h2 span {
   margin-left: 8px;
   color: var(--muted);
   font-weight: 500;
 }
 
-.emol-page :is(.n2-panel-heading, .h2o-panel-heading) p {
+.emol-page :is(.n2-panel-heading, .h2o-panel-heading, .no-panel-heading) p {
   font-size: .85rem;
 }
 
-.emol-page :is(.n2-fullscreen, .h2o-fullscreen) {
+.emol-page :is(.n2-fullscreen, .h2o-fullscreen, .no-fullscreen) {
   display: inline-flex;
   flex-shrink: 0;
   align-items: center;
@@ -94,17 +94,17 @@
   text-decoration: none;
 }
 
-.emol-page :is(.n2-fullscreen, .h2o-fullscreen):hover {
+.emol-page :is(.n2-fullscreen, .h2o-fullscreen, .no-fullscreen):hover {
   border-color: var(--accent);
   color: var(--accent);
 }
 
-.emol-page :is(.n2-fullscreen, .h2o-fullscreen):focus-visible {
+.emol-page :is(.n2-fullscreen, .h2o-fullscreen, .no-fullscreen):focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
 }
 
-.emol-page :is(#panel-n2, #panel-h2o) .viz-frame {
+.emol-page :is(#panel-n2, #panel-h2o, #panel-no) .viz-frame {
   box-sizing: border-box;
   height: auto;
   min-height: 0;
@@ -112,7 +112,7 @@
   box-shadow: 0 6px 28px rgba(0, 0, 0, .04);
 }
 
-.emol-page :is(#n2-explorer, #h2o-explorer) {
+.emol-page :is(#n2-explorer, #h2o-explorer, #no-explorer) {
   height: 1100px;
 }
 
@@ -159,7 +159,7 @@
   }
 
   .emol-page .container,
-  .emol-page:has(:is(#tab-n2, #tab-h2o)[aria-selected="true"]) main.container {
+  .emol-page:has(:is(#tab-n2, #tab-h2o, #tab-no)[aria-selected="true"]) main.container {
     width: calc(100% - 28px);
   }
 
@@ -196,13 +196,13 @@
     font-size: .87rem;
   }
 
-  .emol-page :is(.n2-panel-heading, .h2o-panel-heading) {
+  .emol-page :is(.n2-panel-heading, .h2o-panel-heading, .no-panel-heading) {
     align-items: flex-start;
     flex-direction: column;
     gap: 12px;
   }
 
-  .emol-page :is(#panel-n2, #panel-h2o) .viz-frame {
+  .emol-page :is(#panel-n2, #panel-h2o, #panel-no) .viz-frame {
     border-radius: 12px;
   }
 }
@@ -239,7 +239,7 @@
 .emol-reference-venue { margin-top: 5px; color: var(--muted); font-size: .78rem; }
 .emol-benchmarks { border-top: 1px solid var(--border); padding-block: 42px; }
 .emol-benchmarks h2 { font-size: 2.2rem; }
-.emol-benchmark-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; }
+.emol-benchmark-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; }
 .emol-benchmark-grid article { border: 1px solid var(--border); padding: 28px; border-radius: 5px; background: var(--panel); }
 .emol-benchmark-grid h3 { font-size: 2.2rem; margin-block: 20px 15px; }
 .emol-benchmark-grid h3 span { font-size: 1.1rem; color: var(--muted); margin-left: 10px; font-weight: 400; }
@@ -263,7 +263,7 @@
   .emol-page .site-header .site-nav a { font-size: .86rem; }
   .emol-page #emol-title { font-size: 2.8rem; }
   .emol-page #emol-title span { font-size: .34em; }
-  .emol-page .tabs { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); }
+  .emol-page .tabs { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); }
   .emol-methods, .emol-benchmark-grid, .emol-validation { grid-template-columns: 1fr; gap: 30px; }
   .emol-reference-group { grid-template-columns: 1fr; gap: 18px; }
   .emol-methods h2 { font-size: 2rem; }

@@ -4,6 +4,7 @@
   var frames = Object.create(null);
   frames['emol:n2:resize'] = document.getElementById('n2-explorer');
   frames['emol:h2o:resize'] = document.getElementById('h2o-explorer');
+  frames['emol:no:resize'] = document.getElementById('no-explorer');
 
   // Each explorer reports its content height so the page has one scroll area.
   window.addEventListener('message', function (event) {

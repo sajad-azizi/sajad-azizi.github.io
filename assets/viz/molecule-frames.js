@@ -1,4 +1,4 @@
-/* Coordinate guide for N₂ and H₂O. This illustrates the existing angle convention;
+/* Coordinate guide for N₂, H₂O and NO. This illustrates the existing angle convention;
    it never modifies the payload, numerical core, or any plot's settings. */
 (function () {
   'use strict';
@@ -39,7 +39,7 @@
     return node;
   }
 
-  function makeDrawing(id, label, isWater) {
+  function makeDrawing(id, label, isWater, isNitricOxide) {
     const svg = svgElement('svg', {viewBox: '0 0 500 440', role: 'img', 'aria-labelledby': id + '-title ' + id + '-description', class: 'frame-drawing'});
     svg.appendChild(svgElement('title', {id: id + '-title'}, label));
     const description = svgElement('desc', {id: id + '-description'});
@@ -113,10 +113,14 @@
       }
       const a = scale(z, -.48), b = scale(z, .48);
       line(a, b, '#91a7b9', {'stroke-width': 9});
-      for (const point of [a, b]) {
+      // In the NO campaign, molecular +z points toward O and −z toward N.
+      // Positions remain schematic and do not define the dipole origin.
+      for (const [index, point] of [a, b].entries()) {
+        const isOxygen = isNitricOxide && index === 1;
         const p = project(point);
-        stage.appendChild(svgElement('circle', {cx: p[0], cy: p[1], r: 18, fill: 'url(#' + id + '-atom)', stroke: '#a5bbc9'}));
-        textAt(point, 'N', '#3c596d', 0, 5, 'frame-atom-label');
+        stage.appendChild(svgElement('circle', {cx: p[0], cy: p[1], r: 18,
+          fill: isOxygen ? '#e9bfc1' : 'url(#' + id + '-atom)', stroke: isOxygen ? '#be7d82' : '#a5bbc9'}));
+        textAt(point, isOxygen ? 'O' : 'N', '#3c596d', 0, 5, 'frame-atom-label');
       }
     }
     return {svg, description, stage, line, arrow, textAt, arc, plane, molecule};
@@ -124,7 +128,9 @@
 
   function buildFrameGuide(root, data) {
     const isWater = Boolean(data && data.meta && /^H2O/.test(data.meta.molecule));
-    const axisName = isWater ? 'z · angle bisector' : 'z · N–N axis';
+    const isNitricOxide = root.dataset.molecule === 'no' || document.body.dataset.molecule === 'no'
+      || Boolean(data && data.meta && /^NO(?:\s|$)/.test(data.meta.molecule));
+    const axisName = isWater ? 'z · angle bisector' : isNitricOxide ? 'z · toward O' : 'z · N–N axis';
     const state = {alpha: 30, beta: 50, gamma: 35, theta: 55, phi: 115};
     const initial = Object.assign({}, state);
     const legend = html('div', 'frame-legend');
@@ -137,7 +143,7 @@
     const pair = html('div', 'frame-pair');
     const drawings = [];
     for (const [id, title, subtitle] of [
-      ['molecular-frame', 'Molecular frame', isWater ? 'H₂O lies in xz; z bisects H–O–H. The y axis is out of plane.' : 'The N–N bond stays on z. Both directions are measured here.'],
+      ['molecular-frame', 'Molecular frame', isWater ? 'H₂O lies in xz; z bisects H–O–H. The y axis is out of plane.' : isNitricOxide ? 'The N–O bond stays on z: N at −z, O at +z. Both directions are measured here.' : 'The N–N bond stays on z. Both directions are measured here.'],
       ['laboratory-frame', 'Laboratory frame', 'The polarization stays on Z. The molecule is tilted.']
     ]) {
       const figure = html('figure', 'frame-figure');
@@ -145,7 +151,7 @@
       heading.appendChild(html('h3', '', title));
       heading.appendChild(html('p', '', subtitle));
       figure.appendChild(heading);
-      const drawing = makeDrawing(id, title + ' coordinate diagram', isWater);
+      const drawing = makeDrawing(id, title + ' coordinate diagram', isWater, isNitricOxide);
       figure.appendChild(drawing.svg);
       drawings.push(drawing);
       pair.appendChild(figure);
@@ -207,12 +213,12 @@
 
     const convention = html('details', 'reading-guide frame-convention');
     convention.appendChild(html('summary', '', 'Angle convention & coordinate transformation'));
-    convention.appendChild(html('p', '', 'The molecular axes are lowercase (x, y, z); laboratory axes are uppercase (X, Y, Z). ' + (isWater ? 'The molecular plane is xz, z bisects H–O–H toward the hydrogens, and y is perpendicular to the plane. ' : 'The bond lies on z. ') + 'Linear polarization lies on Z. Here ϑ is the same polar angle called θ in the plots. All azimuths are right-handed, measured from +x toward +y.'));
+    convention.appendChild(html('p', '', 'The molecular axes are lowercase (x, y, z); laboratory axes are uppercase (X, Y, Z). ' + (isWater ? 'The molecular plane is xz, z bisects H–O–H toward the hydrogens, and y is perpendicular to the plane. ' : isNitricOxide ? 'The N–O bond lies on z, with nitrogen at negative z and oxygen at positive z. Therefore ϑ = 0° points toward the O end and ϑ = 180° toward the N end. ' : 'The bond lies on z. ') + 'Linear polarization lies on Z. Here ϑ is the same polar angle called θ in the plots. All azimuths are right-handed, measured from +x toward +y.'));
     convention.appendChild(html('p', 'frame-formula', 'ε̂mol = (sin β cos α, sin β sin α, cos β)'));
     convention.appendChild(html('p', 'frame-formula', 'k̂mol = (sin ϑ cos φ, sin ϑ sin φ, cos ϑ)'));
     convention.appendChild(html('p', 'frame-formula', 'R = Rz(α) Ry(β) Rz(γ)     ·     vmol = R vlab'));
     convention.appendChild(html('p', '', 'The columns of R are the laboratory axes expressed in molecular coordinates. The inverse transformation is vlab = Rᵀ vmol. The dashed X₀ direction is the laboratory X axis at γ = 0. Increasing γ rotates X₀ toward X about Z; it is a coordinate-frame roll, not an extra polarization parameter.'));
-    convention.appendChild(html('p', '', 'The photoelectron’s angles in the laboratory generally differ from ϑ and φ. Both panels show the same electron and polarization vectors expressed in different frames. ' + (isWater ? 'The H–O–H angle is 104.52°; atom sizes and lengths are schematic. The drawing places O at the origin for clarity, independently of the numerical expansion or dipole origins used by the data. The 1b₁ orbital is perpendicular to the molecular plane; orbital amplitudes are not drawn.' : 'Nitrogen atoms are schematic; orbital amplitudes and bond lengths are not encoded.')));
+    convention.appendChild(html('p', '', 'The photoelectron’s angles in the laboratory generally differ from ϑ and φ. Both panels show the same electron and polarization vectors expressed in different frames. ' + (isWater ? 'The H–O–H angle is 104.52°; atom sizes and lengths are schematic. The drawing places O at the origin for clarity, independently of the numerical expansion or dipole origins used by the data. The 1b₁ orbital is perpendicular to the molecular plane; orbital amplitudes are not drawn.' : isNitricOxide ? 'The differently labelled N and O atoms distinguish the two ends of this heteronuclear molecule. Atom sizes and bond length are schematic; the drawing does not encode orbital amplitudes or the numerical expansion and dipole origins.' : 'Nitrogen atoms are schematic; orbital amplitudes and bond lengths are not encoded.')));
     root.appendChild(convention);
 
     function render() {
@@ -229,7 +235,7 @@
       const summary = 'α = ' + state.alpha + '°, β = ' + state.beta + '°, γ = ' + state.gamma + '°, ϑ = ' + state.theta + '°, φ = ' + state.phi + '°.';
       const mol = drawings[0];
       mol.stage.replaceChildren();
-      mol.description.textContent = (isWater ? 'Water lies in xz with z bisecting H–O–H. ' : 'Nitrogen’s bond lies along molecular z. ') + 'Teal polarization has polar angle β and azimuth α; orange electron emission has polar angle ϑ and azimuth φ. ' + summary;
+      mol.description.textContent = (isWater ? 'Water lies in xz with z bisecting H–O–H. ' : isNitricOxide ? 'Nitric oxide lies along molecular z, nitrogen at negative z and oxygen at positive z. ' : 'Nitrogen’s bond lies along molecular z. ') + 'Teal polarization has polar angle β and azimuth α; orange electron emission has polar angle ϑ and azimuth φ. ' + summary;
       mol.plane(EX, EY);
       mol.arrow(scale(EX, 1.8), 'molecule', 'x', [12, 6]);
       mol.arrow(scale(EY, 1.8), 'molecule', 'y', [-12, 6]);
@@ -276,5 +282,6 @@
     return {state, render, section: root, geometry: () => geometry(state)};
   }
 
+  window.EmolSections = window.EmolSections || {};
   window.EmolSections.buildFrameGuide = buildFrameGuide;
 })();

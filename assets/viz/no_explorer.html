@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="An eMOL reproduction study of nitric oxide photoionization: compare Figures 3 and 4 with calculated delays and cross sections, then explore the molecular observables.">
+  <title>NO · Paper comparison & molecular explorer — eMOL</title>
+  <link rel="stylesheet" href="molecule-explorer.css">
+  <link rel="stylesheet" href="no-explorer.css?v=20261026-fig4">
+  <script defer src="plotly-2.35.2.min.js"></script>
+  <script defer src="no-paper-data.js?v=20261026-fig4"></script>
+  <script defer src="no-fig4-data.js"></script>
+  <script defer src="no-physics.js"></script>
+  <script defer src="molecule-frames.js"></script>
+  <script defer src="no-explorer.js?v=20261026-fig4"></script>
+</head>
+<body class="no-explorer" data-molecule="no">
+  <a class="skip-link" href="#section-paper">Skip to the paper comparison</a>
+  <header class="page-header">
+    <div class="explorer-topline"><a class="back-link" href="../../emol.html#no" target="_top">← eMOL</a><span class="eyebrow">Molecular photoionization / Reproduction study</span></div>
+    <div class="hero-content">
+      <div class="page-header-text">
+        <div class="title-line"><h1>Nitric oxide <span>NO</span></h1><span class="orbital">Three ionic channels</span></div>
+        <p class="page-summary">Start with the paper. Then explore the amplitudes behind the delay: their energy, direction and polarization dependence.</p>
+        <div class="dataset-facts"><span><strong>b ³Π · c ³Π · X ¹Σ⁺</strong></span><span><strong>800 nm</strong> probe</span><span><strong>16</strong> calculated sidebands</span></div>
+      </div>
+      <svg class="molecule-mark" viewBox="0 0 240 110" role="img" aria-label="Schematic nitric oxide molecule: nitrogen bonded to oxygen">
+        <defs><radialGradient id="nitrogen"><stop offset="0" stop-color="#d8e8f5"/><stop offset="1" stop-color="#9fb9d4"/></radialGradient><radialGradient id="oxygen"><stop offset="0" stop-color="#f9e3dc"/><stop offset="1" stop-color="#d5a99d"/></radialGradient></defs>
+        <ellipse cx="120" cy="98" rx="84" ry="5" fill="#e6ecf0"/>
+        <path d="M84 49h72m-72 12h72" stroke="#aebfc9" stroke-width="5" stroke-linecap="round"/>
+        <circle cx="70" cy="55" r="29" fill="url(#nitrogen)" stroke="#8aa8c5"/><circle cx="170" cy="55" r="27" fill="url(#oxygen)" stroke="#c99a8c"/>
+        <g fill="#365469" font-family="system-ui" font-size="21" font-weight="600" text-anchor="middle"><text x="70" y="62">N</text><text x="170" y="62">O</text></g>
+      </svg>
+    </div>
+    <details class="verification"><summary><span class="selftest selftest-pending" id="selftest-badge" role="status"><span class="status-dot" aria-hidden="true"></span><span id="selftest-text">Loading comparison data…</span></span><span class="verification-hint">Data & numerical checks</span></summary><p id="selftest-detail"></p></details>
+  </header>
+  <div id="page-error" class="selftest-banner" role="alert" hidden></div>
+  <nav class="section-nav no-nav" aria-label="Explore NO photoionization" role="tablist">
+    <button type="button" id="view-paper" role="tab" aria-selected="true" aria-controls="section-paper">Paper comparison</button>
+    <button type="button" id="view-curves" role="tab" aria-selected="false" aria-controls="section-curves" tabindex="-1">Energy curves</button>
+    <button type="button" id="view-polar" role="tab" aria-selected="false" aria-controls="section-polar" tabindex="-1">Polar cuts</button>
+    <button type="button" id="view-map" role="tab" aria-selected="false" aria-controls="section-map" tabindex="-1">Energy–angle map</button>
+    <button type="button" id="view-surface" role="tab" aria-selected="false" aria-controls="section-surface" tabindex="-1">3D distribution</button>
+    <button type="button" id="view-lab" role="tab" aria-selected="false" aria-controls="section-lab" tabindex="-1">Lab delays</button>
+    <button type="button" id="view-frames" role="tab" aria-selected="false" aria-controls="section-frames" tabindex="-1">Frames & angles</button>
+  </nav>
+  <main>
+    <noscript><p class="error">Enable JavaScript to view the interactive comparison and molecular plots.</p></noscript>
+    <section class="viz-section" id="section-paper" role="tabpanel" aria-labelledby="view-paper" tabindex="0">
+      <div class="paper-intro"><div><span class="no-kicker">Reproducing Figures 3 &amp; 4</span><h2>From ionization strength to attosecond delay</h2><p class="section-lead">Start with the relative two-photon delays in Figure 3. Below, compare the cross sections and one-photon Wigner delays in Figure 4.</p></div><span class="study-status">Reproduction in progress</span></div>
+      <a class="paper-citation" href="https://doi.org/10.1038/s42005-026-02911-1" target="_blank" rel="noopener"><span>Wang et al. · Communications Physics · 2026</span><strong>Capturing attosecond delays in electronic and vibrational dependent photoemission of NO molecules</strong><span class="paper-doi">Read the paper ↗</span></a>
+      <div id="paper-root"><p class="section-placeholder">Loading Figure 3 comparison…</p></div>
+    </section>
+    <section class="viz-section" id="section-curves" role="tabpanel" aria-labelledby="view-curves" tabindex="0" hidden><div class="section-header"><div><h2>Follow the energy dependence</h2><p class="section-lead">Compare the calculated cross sections and anisotropy of the three ionization channels. Every marker is an available calculation.</p></div></div><div id="curves-root"></div></section>
+    <section class="viz-section" id="section-polar" role="tabpanel" aria-labelledby="view-polar" tabindex="0" hidden><div class="section-header"><div><h2>Look along a molecular plane</h2><p class="section-lead">Choose a channel and an energy, then rotate the polarization to see where electrons emerge.</p></div></div><div id="polar-root"></div></section>
+    <section class="viz-section" id="section-map" role="tabpanel" aria-labelledby="view-map" tabindex="0" hidden><div class="section-header"><div><h2>Energy and direction, together</h2><p class="section-lead">Read each horizontal row as one calculated energy. Colour shows the angular response; unsampled energies remain empty.</p></div></div><div id="map-root"></div></section>
+    <section class="viz-section" id="section-surface" role="tabpanel" aria-labelledby="view-surface" tabindex="0" hidden><div class="section-header"><div><h2>Explore the emission in 3D</h2><p class="section-lead">Drag to rotate the angular distribution. The molecular axis runs from nitrogen (−z) to oxygen (+z).</p></div></div><div id="surface-root"></div></section>
+    <section class="viz-section" id="section-lab" role="tabpanel" aria-labelledby="view-lab" tabindex="0" hidden><div class="section-header"><div><h2>From a molecule to a gas</h2><p class="section-lead">Random molecular orientation and electron detection geometry are separate choices. Compare the available averages below.</p></div></div><div id="lab-root"></div></section>
+    <section class="viz-section" id="section-frames" role="tabpanel" aria-labelledby="view-frames" tabindex="0" hidden><div class="section-header"><div><h2>One molecule, two frames</h2><p class="section-lead">Move α, β, γ, ϑ and φ to follow the polarization and the outgoing electron in both coordinate systems.</p></div></div><div id="frames-root" data-molecule="no"></div></section>
+  </main>
+  <footer class="explorer-footer"><span>eMOL <span aria-hidden="true">/</span> NO · b, c & X</span><span id="snapshot-date">Data snapshot · 25 October 2026</span></footer>
+</body>
+</html>
