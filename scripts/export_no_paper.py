@@ -48,6 +48,24 @@ def require(condition, message):
         raise ValueError(message)
 
 
+def photon_index(photon, omega):
+    """Keep fractional scan energies without rounding them to sidebands."""
+    value = photon / omega
+    integer = round(value)
+    index = integer if abs(value - integer) < 1e-7 else round(value, 8)
+    require(abs(index * omega - photon) < 1e-7,
+            "Photon-energy index does not preserve the calculated energy")
+    return index
+
+
+def measured_indices(source, channel):
+    panels = ("a", "b") if channel == "X" else (("a",) if channel == "b" else ("b",))
+    return {int(row["sideband"].removeprefix("SB"))
+            for panel in panels
+            for row in source.csv(source.root / CAMPAIGN / "wf1/raster_b" /
+                                  ("fig3%s_measured_points.csv" % panel))}
+
+
 def load_module(name, path):
     spec = importlib.util.spec_from_file_location(name, path)
     module = importlib.util.module_from_spec(spec)
@@ -117,6 +135,8 @@ def campaign_channel(source, reader, channel):
     trees = [channel] + ([channel + "OFF"] if channel in ("b", "c") else [])
     readings = {}
     excluded = []
+    duplicates = []
+    paper_indices = measured_indices(source, channel)
     max_delay_residual = 0.0
     max_contrast_residual = 0.0
     candidates = []
@@ -145,6 +165,12 @@ def campaign_channel(source, reader, channel):
             elif any(not path.is_file() for path in needed):
                 reason = "Missing completion record, centre log or identity-gate result"
             else:
+                gates = re.search(r"(\d+) gates, (\d+) failed", (sideband / "identity_tool.log").read_text())
+                if gates is None:
+                    reason = "Overlap-identity gate report is incomplete"
+                else:
+                    require(int(gates[1]) > 0 and int(gates[2]) == 0,
+                            "Sideband overlap identity did not pass: " + str(sideband))
                 try:
                     amplitude_paths = [Path(reader.amplitude_file(str(sideband), q, r))
                                        for q in reader.COMPONENTS for r in reader.COMPONENTS]
@@ -161,10 +187,7 @@ def campaign_channel(source, reader, channel):
 
     for tree, sideband, centre, match, saved, amplitude_paths in candidates:
         ef = float(match["ef"])
-        order = int(round((ef + THRESHOLDS[channel]) / OMEGA_EV))
-        require(abs(order * OMEGA_EV - THRESHOLDS[channel] - ef) < 1e-5,
-                "Sideband energy and threshold do not match")
-        require(order not in readings, "Duplicate production %s energy index %d" % (channel, order))
+        order = photon_index(ef + THRESHOLDS[channel], OMEGA_EV)
         require(match["constraint"] == "ion", "Mixed production constraint set")
         done = source.text(centre / "RUN_DONE")
         require(re.search(r"\brc 0\b", done) is not None, "Unsuccessful centre run")
@@ -195,28 +218,38 @@ def campaign_channel(source, reader, channel):
         for name, actual in (("complete", complete), ("omitted", omitted), ("fourpi", fourpi)):
             residual = abs(actual - float(match[name]))
             max_delay_residual = max(max_delay_residual, residual)
-            require(residual <= 5.01e-5, "Raw %s energy index %d %s does not reproduce saved reading" %
+            require(residual <= 5.01e-5, "Raw %s energy index %g %s does not reproduce saved reading" %
                     (channel, order, name))
         for name, actual in (("contrast", contrast), ("omitted_contrast", omitted_contrast)):
             residual = abs(actual - float(match[name]))
             max_contrast_residual = max(max_contrast_residual, residual)
             require(residual <= 5.01e-5, "Raw contrast differs from saved reading")
 
-        readings[order] = {
+        point = {
             "order": order, "ef": ef, "photon": round(order * OMEGA_EV, 6),
             **{key: float(match[key]) for key in ("complete", "omitted", "fourpi", "contrast")},
             "omitted_contrast": float(match["omitted_contrast"]),
             "route": "box" if tree.endswith("OFF") or channel == "X" else "far field",
             "pole_distance": pole_distance, "fit_ksym": float(fit["ksym"]),
             "at_pole": pole_distance < POLE_DISTANCE, "constraint_set": "ion",
-            "is_paper_sideband": order % 2 == 0,
+            "is_paper_sideband": order in paper_indices,
             "completed_at": completed.group(0),
             "source": str(sideband.relative_to(source.root)),
             "reader_output": str(saved.relative_to(source.root)),
         }
-        print("Raw amplitudes verified: %s energy index %d" % (channel, order), flush=True)
+        if order in readings:
+            selected = readings[order]
+            require(tree.endswith("OFF") and selected["route"] == "far field",
+                    "Ambiguous duplicate production energy: " + str(sideband))
+            require(point["photon"] == selected["photon"], "Route check uses a different photon energy")
+            duplicates.append({"channel": channel, "order": order,
+                               "source": point["source"], "selected_source": selected["source"],
+                               "reason": "Validated box-route check; existing main-route production point retained"})
+        else:
+            readings[order] = point
+        print("Raw amplitudes verified: %s energy index %g" % (channel, order), flush=True)
     require(readings, "No validated sidebands available for " + channel)
-    return [readings[o] for o in sorted(readings)], max_delay_residual, max_contrast_residual, excluded
+    return [readings[o] for o in sorted(readings)], max_delay_residual, max_contrast_residual, excluded, duplicates
 
 
 def paper_comparison(source, channel, channels):
@@ -278,9 +311,11 @@ def export(source_root):
     channels = {}
     delay_residual = contrast_residual = 0.0
     excluded = []
+    duplicates = []
     for channel in ("b", "c", "X"):
-        channels[channel], delay_error, contrast_error, pending = campaign_channel(source, reader, channel)
+        channels[channel], delay_error, contrast_error, pending, route_checks = campaign_channel(source, reader, channel)
         excluded.extend(pending)
+        duplicates.extend(route_checks)
         delay_residual = max(delay_residual, delay_error)
         contrast_residual = max(contrast_residual, contrast_error)
     comparisons = {channel: paper_comparison(source, channel, channels) for channel in ("b", "c")}
@@ -300,6 +335,7 @@ def export(source_root):
     validation = {
         "passed": True, "reader_checks": reader_checks, "raw_sidebands_checked": sideband_count,
         "raw_amplitude_files_checked": sideband_count * 9, "relative_points": relative_count,
+        "duplicate_route_checks": len(duplicates), "duplicate_amplitude_files_checked": len(duplicates) * 9,
         "maximum_saved_delay_residual_as": delay_residual,
         "maximum_saved_contrast_residual": contrast_residual,
         "saved_reading_tolerance": 5.01e-5,
@@ -315,7 +351,8 @@ def export(source_root):
             "snapshot_description": "Validated local export date (UTC); two-photon products can be newer than their one-photon centre runs.",
             "latest_centre_completion": max(row["completed_at"][:10] for rows in channels.values() for row in rows),
             "excluded_sidebands": excluded,
-            "sample_kind_note": "Odd photon-energy indices are additional interleaved calculations, not additional experimental sidebands. Paper measurements and independent-reference markers retain their original grids.",
+            "duplicate_sidebands": duplicates,
+            "sample_kind_note": "Calculated photon-energy indices may be fractional. Samples outside the paper's measured grid are additional calculations, not additional experimental sidebands. Paper measurements and independent-reference markers retain their original grids.",
             "bond_length_angstrom": 1.15,
             "comparison_scope": "Fig. 3 electronic-state delays at fixed nuclei; vibrationally resolved Fig. 5 is not included.",
             "paper_axes": {channel: {axis: calibration["fig3" + panel][axis]["frame_values"]
@@ -334,7 +371,7 @@ def export(source_root):
             "Experimental error bars and theory curves were digitized from Fig. 3, not supplied as author numerical data. The bars represent propagated 1σ fitted-phase uncertainties; small digitized upper/lower differences are preserved. Bridged theory segments reconstruct stretches obscured by markers. Experimental horizontal coordinates are preserved.",
             "eMOL uses complete second-order amplitudes. The independent ePolyScat reference combines its molecular delay with an asymptotic continuum–continuum term; no extra cc term is added to eMOL.",
             "Every channel difference uses expansion-origin readings. X production uses the ion constraint set and does not permit a hole-centroid shift; its separate Xh acceptance run is excluded.",
-            "Hollow eMOL points identify b SB28 and c SB22, whose centre runs lie near K-matrix poles. The box-route replacements pass the overlap-identity checks; the pole flag remains visible. c SB24 also uses the box route but is not pole flagged.",
+            "Hollow eMOL points identify centre runs within 0.001 rad of a K-matrix pole. Box-route replacements retain the pole flag after passing their overlap-identity checks. Separate complete route checks are recorded without duplicating production energies.",
             "The independent reference preserves its original, slightly more precise photon energies. Additional interleaved eMOL energies do not add experimental or independent-reference markers. Relative delays are formed only where both the selected channel and X have the same photon energy. No fitted phase, scale or horizontal shift is applied.",
             "The original Molpro 2015.1 inputs and orbitals are unavailable. The independent reference uses explicit ROHF orbitals cross-checked between PySCF and Psi4. Agreement between calculations does not establish an author error.",
         ],

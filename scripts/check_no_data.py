@@ -138,6 +138,78 @@ def check_exclusions(entries, exported, candidates, source_prefix=""):
     check(set(sideband_paths) == candidates - exported, "Unreported or stale sideband exclusion")
 
 
+def check_sideband_routes(entries, rows, hashes, source_root, campaign, channel,
+                          exclusions, source_prefix="", angular=False):
+    """Audit one production point per physical energy, plus validated reruns.
+
+    Main-route products have precedence over OFF diagnostics at a shared
+    energy. A duplicate is accepted only after the alternate's own inputs,
+    completed centre run and products have been checked and hashed.
+    """
+    def full(value):
+        path = PurePosixPath(value)
+        check(not path.is_absolute() and ".." not in path.parts, "Invalid sideband source path")
+        return str(PurePosixPath(source_prefix) / path)
+
+    exported = {full(row["source"]) for row in rows}
+    duplicate_map = {}
+    for row in entries:
+        source, selected = full(row["source"]), full(row["selected_source"])
+        check(source not in duplicate_map and source not in exported and selected in exported,
+              "Duplicate route is repeated, exported twice or has no selected production point")
+        check(isinstance(row["reason"], str) and row["reason"].strip(), "Duplicate route has no explanation")
+        alternate_path, selected_path = PurePosixPath(source), PurePosixPath(selected)
+        close(float(alternate_path.name[2:]), float(selected_path.name[2:]),
+              "Route comparison joins different electron energies", atol=1e-6, rtol=0)
+        check(alternate_path.parent.parent.name == channel + "OFF" and
+              selected_path.parent.parent.name == channel,
+              "Duplicate route did not preserve main-route precedence")
+        check(all(path in hashes for path in amplitude_files(source)), "Unhashed alternate amplitude tensor")
+        check(str(alternate_path / "identity_tool.log") in hashes, "Unhashed alternate identity gates")
+        center = alternate_path.parent.parent / ("E%.6g" % float(alternate_path.name[2:]))
+        check(all(str(center / name) in hashes for name in ("RUN_DONE", "run.log")),
+              "Unhashed alternate centre completion or pole diagnostics")
+        if angular:
+            check(all(str(alternate_path / ("lab_expansion_%d.h5" % angle)) in hashes for angle in (0, 90)),
+                  "Unhashed alternate laboratory averages")
+            check(all(any(str(alternate_path / ("direction_%s_expansion.%s" % (direction, suffix))) in hashes
+                          for suffix in ("h5", "log")) for direction in ("Oend", "Nend", "perp")),
+                  "Unhashed alternate direction products or node refusals")
+        else:
+            # A standalone asset must at least carry saved readings from the
+            # alternate tree; with sources available, verify the exact Ef row.
+            saved_paths = [path for path in hashes
+                           if PurePosixPath(path).parent == alternate_path.parent and
+                           PurePosixPath(path).name.startswith("fig3_read_")]
+            check(saved_paths, "Unhashed alternate saved reader output")
+            if source_root:
+                pattern = re.escape(alternate_path.name) + r" expansion\s+E_f"
+                check(any(re.search(pattern, (source_root / path).read_text()) for path in saved_paths),
+                      "No saved reader output for the alternate energy")
+        duplicate_map[source] = selected
+
+    if source_root:
+        ready, candidates = source_sidebands(source_root, campaign, channel, angular=angular)
+        expected = []
+        expected_duplicates = {}
+        for path in sorted(ready, key=lambda p: (PurePosixPath(p).parent.parent.name != channel,
+                                               float(PurePosixPath(p).name[2:]), p)):
+            energy = float(PurePosixPath(path).name[2:])
+            previous = next((old for old_energy, old in expected if abs(old_energy - energy) <= 1e-6), None)
+            if previous is None:
+                expected.append((energy, path))
+            else:
+                check(PurePosixPath(path).parent.parent.name == channel + "OFF" and
+                      PurePosixPath(previous).parent.parent.name == channel,
+                      "Ambiguous duplicate energy within one production route")
+                expected_duplicates[path] = previous
+        check(exported == {path for _, path in expected},
+              "Export does not cover the selected ready " + channel + " energies")
+        check(duplicate_map == expected_duplicates, "Unreported or stale validated route comparison")
+        check_exclusions(exclusions, exported | set(duplicate_map), candidates, source_prefix)
+    return len(duplicate_map)
+
+
 def check_paper(paper, source_root):
     check(set(paper["channels"]) == {"b", "c", "X"}, "Unexpected ionic channels")
     check(paper["meta"]["origin"] == "expansion" and paper["provenance"]["constraint_set"] == "ion",
@@ -145,7 +217,7 @@ def check_paper(paper, source_root):
     hashes = manifest(paper["provenance"]["hashfile"], source_root)
     threshold = paper["provenance"]["pole_eigenphase_threshold_rad"]
     by_channel = {}
-    raw_count = 0
+    raw_count = duplicate_count = 0
     pole_points = set()
     for channel, rows in paper["channels"].items():
         orders = [row["order"] for row in rows]
@@ -155,7 +227,7 @@ def check_paper(paper, source_root):
         for row in rows:
             close(row["photon"], row["order"] * paper["meta"]["omega_ev"], "Sideband energy inconsistency")
             check(row["constraint_set"] == "ion" and "/Xh/" not in row["source"], "Diagnostic hole set in production")
-            check(row["is_paper_sideband"] is (row["order"] % 2 == 0),
+            check(row["is_paper_sideband"] is (row["order"] in BASELINE_ORDERS[channel]),
                   "Interleaved calculated energy was labelled as a paper sideband")
             check(row["at_pole"] == (row["pole_distance"] < threshold), "Incorrect centre-run pole flag")
             check(0 <= row["contrast"] <= 1 and 0 <= row["omitted_contrast"] <= 1, "Invalid visibility")
@@ -165,12 +237,10 @@ def check_paper(paper, source_root):
             centre = PurePosixPath(row["source"]).parent.parent / ("E%.6g" % row["ef"])
             check(str(centre / "RUN_DONE") in hashes and str(centre / "run.log") in hashes, "Missing centre provenance")
             raw_count += 1
-        if source_root:
-            ready, candidates = source_sidebands(source_root, paper["provenance"]["campaign"], channel)
-            exported = {row["source"] for row in rows}
-            check(exported == ready, "Paper export does not cover the ready " + channel + " energy samples")
-            exclusions = [row for row in paper["meta"]["excluded_sidebands"] if row["channel"] == channel]
-            check_exclusions(exclusions, exported, candidates)
+        exclusions = [row for row in paper["meta"]["excluded_sidebands"] if row["channel"] == channel]
+        duplicates = [row for row in paper["meta"].get("duplicate_sidebands", []) if row["channel"] == channel]
+        duplicate_count += check_sideband_routes(duplicates, rows, hashes, source_root,
+                                                paper["provenance"]["campaign"], channel, exclusions)
 
     relative_count = 0
     for channel, comparison in paper["comparisons"].items():
@@ -183,7 +253,8 @@ def check_paper(paper, source_root):
             for quantity in ("complete", "omitted", "fourpi"):
                 close(row[quantity], a[quantity] - x[quantity], "Incorrect relative delay", atol=1e-12)
             check(row["at_pole"] == (a["at_pole"] or x["at_pole"]), "Relative curve lost a pole flag")
-            check(row["is_paper_sideband"] is a["is_paper_sideband"] is x["is_paper_sideband"],
+            check(row["is_paper_sideband"] is a["is_paper_sideband"] is
+                  (row["order"] in PAPER_ORDERS[channel]),
                   "Relative curve changed the interleaved-energy classification")
             if row["at_pole"]:
                 pole_points.add((channel, row["order"]))
@@ -229,6 +300,9 @@ def check_paper(paper, source_root):
     check(validation["raw_sidebands_checked"] == raw_count and
           validation["raw_amplitude_files_checked"] == raw_count * 9 and
           validation["relative_points"] == relative_count, "Validation counts do not cover the data")
+    check(validation.get("duplicate_route_checks", 0) == duplicate_count and
+          validation.get("duplicate_amplitude_files_checked", 0) == 9 * duplicate_count,
+          "Alternate route validation counts do not cover the duplicate metadata")
     check(validation["maximum_saved_delay_residual_as"] <= validation["saved_reading_tolerance"] and
           validation["maximum_saved_contrast_residual"] <= validation["saved_reading_tolerance"], "Saved reading precision failed")
     latest_center = max(row["completed_at"][:10] for rows in paper["channels"].values() for row in rows)
@@ -292,7 +366,7 @@ def check_amplitudes(data, paper, paper_hashes, source_root):
     check(data["meta"]["dipole_origin"] == paper["meta"]["origin"] == "expansion", "Amplitude and paper origins differ")
     check("preapplied" in data["meta"]["two_photon_phase"], "Missing final partial-wave phase convention")
     check(set(data["channels"]) == set(paper["channels"]), "Amplitude channels differ from paper channels")
-    one_count = two_count = 0
+    one_count = two_count = duplicate_count = 0
     for channel, content in data["channels"].items():
         points = content["onePhoton"]
         check(len(points) >= {"b": 13, "c": 9, "X": 13}[channel], "Original one-photon coverage was lost")
@@ -354,20 +428,20 @@ def check_amplitudes(data, paper, paper_hashes, source_root):
                 close(lab["tau_R_as"], lab["tau_1_as"] + lab["tau_cc_as"], "Lab delay split failed")
                 check(0 <= lab["fringe_depth"] <= 1, "Invalid lab contrast")
             two_count += 1
-        if source_root:
-            ready, candidates = source_sidebands(source_root, prefix, channel, angular=True)
-            exported = {str(PurePosixPath(prefix) / row["source"]) for row in content["sidebands"]}
-            check(exported == ready, "Amplitude export does not cover ready " + channel + " energy samples")
-            exclusions = [row for row in data["meta"]["excluded_incomplete"]
-                          if row["source"].split("/", 1)[0] in {channel, channel + "OFF"}]
-            check_exclusions(exclusions, exported, candidates, prefix)
+        exclusions = [row for row in data["meta"]["excluded_incomplete"]
+                      if row["source"].split("/", 1)[0] in {channel, channel + "OFF"}]
+        duplicates = [row for row in data["meta"].get("duplicate_sidebands", [])
+                      if row["source"].split("/", 1)[0] in {channel, channel + "OFF"}]
+        duplicate_count += check_sideband_routes(duplicates, content["sidebands"], hashes, source_root,
+                                                prefix, channel, exclusions, prefix, angular=True)
     check(two_count == paper["meta"]["validation"]["raw_sidebands_checked"], "Incomplete two-photon amplitude coverage")
     checks = data["meta"]["validation"]["checks"]
-    check(checks["dipole_prefactors"] == one_count and checks["lab_interference_delays"] == 2 * two_count,
+    validated_count = two_count + duplicate_count
+    check(checks["dipole_prefactors"] == one_count and checks["lab_interference_delays"] == 2 * validated_count,
           "Amplitude validation does not cover every exported energy")
-    check(checks["sideband_identity_gates"] == two_count, "Missing overlap-identity checks")
+    check(checks["sideband_identity_gates"] == validated_count, "Missing overlap-identity checks")
     check(checks["stored_direction_delays"] == checks["stored_direction_strengths"] and
-          checks["stored_direction_delays"] + checks["stored_direction_refusals"] == 3 * two_count,
+          checks["stored_direction_delays"] + checks["stored_direction_refusals"] == 3 * validated_count,
           "Stored directional checks or node refusals are missing")
     return one_count, two_count
 

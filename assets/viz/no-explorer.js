@@ -5,7 +5,7 @@
   const RAD = Math.PI / 180;
   const COLORS = {emol: '#117c7d', measured: '#334b64', theory: '#cb8652', reference: '#8d739d', b: '#137f80', c: '#b66d45', X: '#6676a3'};
   const LABELS = {b: 'b ³Π', c: 'c ³Π', X: 'X ¹Σ⁺'};
-  const DATA_REVISION = '20261026-no-refresh';
+  const DATA_REVISION = '20261028-no-refresh';
   const sampleLabel = order => order % 2 === 0 ? 'SB' + order : 'Photon index ' + order;
   const CONFIG = {responsive: false, displaylogo: false, scrollZoom: false, modeBarButtonsToRemove: ['select2d', 'lasso2d', 'autoScale2d'], toImageButtonOptions: {format: 'png', scale: 2}};
   const built = new Set();
@@ -94,7 +94,7 @@
   }
   function downloadPaper(data) {
     const head = ['channel_difference', 'photon_energy_index', 'sample_kind', 'photon_energy_eV', 'full_xyz_delay_as', 'y_omitted_diagnostic_as', 'all_directions_4pi_as', 'near_K_pole', 'route', 'origin'];
-    const rows = [head, ...['b', 'c'].flatMap(ch => data.comparisons[ch].emol.map(p => [ch + '-X', p.order, p.order % 2 === 0 ? 'sideband' : 'interleaved_calculation', p.photon, p.complete, p.omitted, p.fourpi, p.at_pole, p.route, 'expansion']))];
+    const rows = [head, ...['b', 'c'].flatMap(ch => data.comparisons[ch].emol.map(p => [ch + '-X', p.order, p.is_paper_sideband ? 'sideband' : 'interleaved_calculation', p.photon, p.complete, p.omitted, p.fourpi, p.at_pole, p.route, 'expansion']))];
     const url = URL.createObjectURL(new Blob([rows.map(r => r.join(',')).join('\n') + '\n'], {type: 'text/csv;charset=utf-8'}));
     const a = node('a'); a.href = url; a.download = 'NO-Fig3-eMOL-' + data.meta.snapshot + '.csv'; a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
@@ -125,7 +125,7 @@
     }
     const poleLabels = ['b', 'c'].flatMap(ch => data.comparisons[ch].emol.filter(p => p.at_pole).map(p => ch + ' ' + sampleLabel(p.order)));
     note(root, '◆ Filled diamonds: eMOL. ◇ Hollow diamonds: near-pole centre runs' + (poleLabels.length ? ' (' + poleLabels.join('; ') + ')' : '') + '. Experimental bars are digitized 1σ uncertainties. Dotted theory segments reconstruct parts obscured by markers.');
-    const intermediateCount = ['b', 'c'].reduce((n, ch) => n + data.comparisons[ch].emol.filter(p => p.order % 2 !== 0).length, 0);
+    const intermediateCount = ['b', 'c'].reduce((n, ch) => n + data.comparisons[ch].emol.filter(p => !p.is_paper_sideband).length, 0);
     if (intermediateCount) note(root, intermediateCount + ' additional comparison points sample intermediate photon energies. These are calculations; the experimental points remain those digitized from the paper.');
     const fig4 = node('div', 'no-fig4'); fig4.id = 'fig4-root'; root.append(fig4);
     const interpretation = node('div', 'no-interpretation');
@@ -153,7 +153,7 @@
         if (!fourpi && state.theory) traces.push(...theoryTraces(comp.theory));
         if (!fourpi && state.measured) traces.push(paperTrace(comp.measured, 'value', 'Experiment · digitized', COLORS.measured, 'circle', {error_y: {type: 'data', symmetric: false, array: comp.measured.map(p => p.err_up), arrayminus: comp.measured.map(p => p.err_down), color: COLORS.measured, thickness: 1.2, width: 3}, marker: {color: COLORS.measured, size: 7}}));
         if (!fourpi && state.reference) traces.push(paperTrace(comp.reference, state.convention, 'Independent ePolyScat + cc', COLORS.reference, 'triangle-up-open', {marker: {color: COLORS.reference, symbol: 'triangle-up-open', size: 12, line: {width: 1.5, color: COLORS.reference}}}));
-        if (state.emol) traces.push(paperTrace(comp.emol, state.convention, 'eMOL', COLORS.emol, 'diamond', {marker: {color: COLORS.emol, size: 10, symbol: comp.emol.map(p => p.at_pole ? 'diamond-open' : 'diamond'), line: {width: 1.8, color: COLORS.emol}}, customdata: comp.emol.map(p => [sampleLabel(p.order), p.route + (p.at_pole ? ' · near K pole' : '') + (p.order % 2 ? ' · interleaved calculation' : '')]), hovertemplate: 'eMOL · %{customdata[0]}<br>%{x:.4f} eV · %{y:.2f} as<br>%{customdata[1]}<extra></extra>'}));
+        if (state.emol) traces.push(paperTrace(comp.emol, state.convention, 'eMOL', COLORS.emol, 'diamond', {marker: {color: COLORS.emol, size: comp.emol.length > 12 ? 8 : 10, symbol: comp.emol.map(p => p.at_pole ? 'diamond-open' : 'diamond'), line: {width: 1.8, color: COLORS.emol}}, customdata: comp.emol.map(p => [sampleLabel(p.order), p.route + (p.at_pole ? ' · near K pole' : '') + (!p.is_paper_sideband ? ' · interleaved calculation' : '')]), hovertemplate: 'eMOL · %{customdata[0]}<br>%{x:.4f} eV · %{y:.2f} as<br>%{customdata[1]}<extra></extra>'}));
         return plot(charts[ch], traces, {height: 370, margin: {l: 57, r: 15, t: 20, b: 52}, xaxis: {title: 'Sideband photon energy (eV)', range: ch === 'b' ? [26.5, 45] : [33, 45], gridcolor: '#eaf0f3', zeroline: false, dtick: 3}, yaxis: {title: 'Relative delay (as)', range: [-140, 140], tickvals: [-120, -60, 0, 60, 120], gridcolor: '#eaf0f3', zerolinecolor: '#bccbd3'}});
       }));
     }
@@ -230,7 +230,7 @@
           traces[key].push({type: 'scatter', mode: 'lines', name: labels[ch] + ' · independent ePolyScat', x: ref.map(p => p.photon), y: ref.map(p => p[field]), line: {color: channelColors[ch], width: 1.5, dash: 'dash'}, hovertemplate: labels[ch] + ' · independent ePolyScat<br>%{x:.3f} eV<br>%{y:.3g}' + unit + '<extra></extra>'});
           traces[key].push({type: 'scatter', mode: 'markers', name: labels[ch] + ' · reference fine checkpoint', x: fine.map(p => p.photon), y: fine.map(p => p[field]), marker: {color: channelColors[ch], symbol: 'circle-open', size: 7, line: {color: channelColors[ch], width: 1.3}}, hovertemplate: labels[ch] + ' · local fine checkpoint<br>%{x:.3f} eV<br>%{y:.3g}' + unit + '<extra></extra>'});
         }
-        if (emol.length) traces.sigma.push({type: 'scatter', mode: 'markers', name: labels[ch] + ' · eMOL', x: emol.map(p => p.photon), y: emol.map(p => p[sigmaKey]), marker: {color: channelColors[ch], symbol: emol.map(p => p.route === 'box' ? 'diamond-open' : 'diamond'), size: 7, line: {color: channelColors[ch], width: 1.2}}, customdata: emol.map(p => p.route + (p.at_pole ? ' · near K pole' : '')), hovertemplate: labels[ch] + ' · eMOL<br>%{x:.4f} eV<br>%{y:.3g}' + (scaled ? ' · 4π-scaled (Mb)' : ' Mb/sr') + '<br>%{customdata}<extra></extra>'});
+        if (emol.length) traces.sigma.push({type: 'scatter', mode: 'markers', name: labels[ch] + ' · eMOL', x: emol.map(p => p.photon), y: emol.map(p => p[sigmaKey]), marker: {color: channelColors[ch], symbol: emol.map(p => p.route === 'box' ? 'diamond-open' : 'diamond'), size: emol.length > 20 ? 6 : 7, line: {color: channelColors[ch], width: 1.2}}, customdata: emol.map(p => p.route + (p.at_pole ? ' · near K pole' : '')), hovertemplate: labels[ch] + ' · eMOL<br>%{x:.4f} eV<br>%{y:.3g}' + (scaled ? ' · 4π-scaled (Mb)' : ' Mb/sr') + '<br>%{customdata}<extra></extra>'});
       }
       convention.textContent = (state.convention === 'omitted' ? 'Y-omitted diagnostic. ' : 'Full x,y,z components. ') + (scaled ? 'Cross-section ordinate comparison: paper numbers versus 4π × calculated dσ/dΩ. These are different normalizations; see details below.' : 'Physical dσ/dΩ in Mb/sr, along polarization. The paper cross-section curve is hidden because its normalization is unresolved.');
       await Promise.all(['sigma', 'delay'].map(key => plot(charts[key], traces[key], {height: 390, margin: {l: 57, r: 15, t: 20, b: 52}, xaxis: {title: 'Photon energy (eV)', range: [25, 50], dtick: 5, gridcolor: '#eaf0f3', zeroline: false}, yaxis: {title: key === 'delay' ? 'Wigner delay (as)' : scaled ? 'Cross-section ordinate' : 'dσ/dΩ (Mb/sr)', rangemode: key === 'sigma' ? 'tozero' : 'normal', gridcolor: '#eaf0f3', zerolinecolor: '#bccbd3'}})));
