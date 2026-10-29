@@ -7,13 +7,14 @@
   <meta name="description" content="An eMOL reproduction study of nitric oxide photoionization: compare Figures 3 and 4 with calculated delays and cross sections, then explore the molecular observables.">
   <title>NO · Paper comparison & molecular explorer — eMOL</title>
   <link rel="stylesheet" href="molecule-explorer.css">
-  <link rel="stylesheet" href="no-explorer.css?v=20261028-no-refresh">
+  <link rel="stylesheet" href="no-explorer.css?v=20261029-no-angular-delays">
   <script defer src="plotly-2.35.2.min.js"></script>
-  <script defer src="no-paper-data.js?v=20261028-no-refresh"></script>
-  <script defer src="no-fig4-data.js?v=20261028-no-refresh"></script>
-  <script defer src="no-physics.js"></script>
+  <script defer src="no-paper-data.js?v=20261029-no-angular-delays"></script>
+  <script defer src="no-fig4-data.js?v=20261029-no-angular-delays"></script>
+  <script defer src="no-physics.js?v=20261029-no-angular-delays"></script>
+  <script defer src="no-map.js?v=20261029-no-angular-delays"></script>
   <script defer src="molecule-frames.js"></script>
-  <script defer src="no-explorer.js?v=20261028-no-refresh"></script>
+  <script defer src="no-explorer.js?v=20261029-no-angular-delays"></script>
 </head>
 <body class="no-explorer" data-molecule="no">
   <a class="skip-link" href="#section-paper">Skip to the paper comparison</a>
@@ -53,9 +54,9 @@
       <div id="paper-root"><p class="section-placeholder">Loading Figure 3 comparison…</p></div>
     </section>
     <section class="viz-section" id="section-curves" role="tabpanel" aria-labelledby="view-curves" tabindex="0" hidden><div class="section-header"><div><h2>Follow the energy dependence</h2><p class="section-lead">Compare the calculated cross sections and anisotropy of the three ionization channels. Every marker is an available calculation.</p></div></div><div id="curves-root"></div></section>
-    <section class="viz-section" id="section-polar" role="tabpanel" aria-labelledby="view-polar" tabindex="0" hidden><div class="section-header"><div><h2>Look along a molecular plane</h2><p class="section-lead">Choose a channel and an energy, then rotate the polarization to see where electrons emerge.</p></div></div><div id="polar-root"></div></section>
-    <section class="viz-section" id="section-map" role="tabpanel" aria-labelledby="view-map" tabindex="0" hidden><div class="section-header"><div><h2>Energy and direction, together</h2><p class="section-lead">Read each horizontal row as one calculated energy. Colour shows the angular response; unsampled energies remain empty.</p></div></div><div id="map-root"></div></section>
-    <section class="viz-section" id="section-surface" role="tabpanel" aria-labelledby="view-surface" tabindex="0" hidden><div class="section-header"><div><h2>Explore the emission in 3D</h2><p class="section-lead">Drag to rotate the angular distribution. The molecular axis runs from nitrogen (−z) to oxygen (+z).</p></div></div><div id="surface-root"></div></section>
+    <section class="viz-section" id="section-polar" role="tabpanel" aria-labelledby="view-polar" tabindex="0" hidden><div class="section-header"><div><h2>Look along a molecular plane</h2><p class="section-lead">Slide through electron energies, then rotate the polarization to see where electrons emerge.</p></div></div><div id="polar-root"></div></section>
+    <section class="viz-section" id="section-map" role="tabpanel" aria-labelledby="view-map" tabindex="0" hidden><div class="section-header"><div><h2>Energy and direction, together</h2><p class="section-lead">Explore a smooth view of the energy and angular dependence, or switch to calculated points to inspect the original samples.</p></div></div><div id="map-root"></div></section>
+    <section class="viz-section" id="section-surface" role="tabpanel" aria-labelledby="view-surface" tabindex="0" hidden><div class="section-header"><div><h2>Explore the emission in 3D</h2><p class="section-lead">Slide through electron energies and drag the plot to rotate the distribution. The molecular axis runs from nitrogen (−z) to oxygen (+z).</p></div></div><div id="surface-root"></div></section>
     <section class="viz-section" id="section-lab" role="tabpanel" aria-labelledby="view-lab" tabindex="0" hidden><div class="section-header"><div><h2>From a molecule to a gas</h2><p class="section-lead">Random molecular orientation and electron detection geometry are separate choices. Compare the available averages below.</p></div></div><div id="lab-root"></div></section>
     <section class="viz-section" id="section-frames" role="tabpanel" aria-labelledby="view-frames" tabindex="0" hidden><div class="section-header"><div><h2>One molecule, two frames</h2><p class="section-lead">Move α, β, γ, ϑ and φ to follow the polarization and the outgoing electron in both coordinate systems.</p></div></div><div id="frames-root" data-molecule="no"></div></section>
   </main>

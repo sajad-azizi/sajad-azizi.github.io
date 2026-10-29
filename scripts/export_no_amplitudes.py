@@ -4,7 +4,7 @@
     python -B scripts/export_no_amplitudes.py --source-root /path/to/mpi_static_exchangeHF
 
 Requires numpy/scipy/h5py and the campaign's validated Fig. 3 reader. No
-scientific source is changed. Derivatives, interpolation and hole-set Xh runs
+scientific source is changed. Wigner-limit derivatives, interpolation and hole-set Xh runs
 are deliberately absent. Missing main-route energies use the available OFF
 redo, explicitly labelled; no duplicate energy or mixed amplitude is allowed.
 
@@ -14,6 +14,8 @@ Cartesian photon-component pairs are retained. Coefficients are sparsified
 only below 1e-12 of the largest coefficient, with discarded weight recorded.
 Every stored molecular-direction reading is checked before export, and the
 browser receives independent dense-amplitude reference vectors.
+The one-photon delay is the production finite-difference harmonic pair at
+E_f -/+ omega, with its same-route dipoles and stored tau_1 references checked.
 """
 
 import argparse
@@ -66,16 +68,20 @@ class Export:
     def __init__(self, root):
         self.root = root
         self.files = set()
-        self.tests = {"onePhoton": [], "twoPhoton": []}
+        self.tests = {"onePhoton": [], "twoPhoton": [], "onePhotonDelay": []}
         self.excluded = []
         self.duplicates = []
         self.checks = {"dipole_prefactors": 0, "stored_direction_delays": 0,
                        "stored_direction_strengths": 0, "lab_interference_delays": 0,
-                       "stored_direction_refusals": 0, "sideband_identity_gates": 0}
+                       "stored_direction_refusals": 0, "sideband_identity_gates": 0,
+                       "one_photon_delay_pairs": 0, "one_photon_direction_delays": 0,
+                       "one_photon_cartesian_delays": 0, "one_photon_lab_delays": 0}
         self.worst = {"direction_delay_as": 0.0, "direction_strength_relative": 0.0,
-                      "dipole_prefactor_relative": 0.0, "lab_delay_as": 0.0}
+                      "dipole_prefactor_relative": 0.0, "lab_delay_as": 0.0,
+                      "one_photon_delay_as": 0.0}
         self.ca = module("comphys_analysis", self.add(root / CAMPAIGN / "wf1/library/comphys_analysis.py"))
         self.reader = module("no_amplitude_reader", self.add(root / CAMPAIGN / "analysis/fig3_reader/emol_fig3_reader.py"))
+        self.add(root / "emol/stages/postprocess/src/rabbitt_delay.hpp")
 
     def add(self, path):
         path = path.resolve()
@@ -255,6 +261,7 @@ class Export:
     def channel(self, channel):
         root = self.root / DATA
         selected = {}
+        route_dipoles = {}
         for tree in [channel] + ([channel + "OFF"] if channel in ("b", "c") else []):
             route = "box" if tree.endswith("OFF") or tree == "X" else "far field"
             for path in sorted((root / tree).glob("E*/dipole.h5")):
@@ -262,15 +269,19 @@ class Export:
                     continue
                 with self.read(path) as f:
                     energy = float(f["energy"][()]) * EV
+                route_dipoles.setdefault(tree, []).append((energy, path))
                 # The main route takes precedence at overlapping redo energies.
                 if any(abs(energy - old) < 1e-6 for old in selected):
                     continue
                 selected[energy] = (path, route)
-        points = []
+        points, extra_dipoles = [], []
+        dipole_refs, dense_dipoles = {}, {}
         for energy, (path, route) in sorted(selected.items()):
             point, d = self.dipole(path, route, channel)
             index = len(points)
             points.append(point)
+            dipole_refs[path] = {"pool": "onePhoton", "index": index}
+            dense_dipoles[path] = d
             for theta, phi, alpha, beta in GEOMETRIES:
                 eps = polarization(alpha, beta)
                 a = np.dot(eps, d) @ self.harmonics(d.shape[-1], theta, phi)
@@ -300,6 +311,63 @@ class Export:
         sidebands.sort(key=lambda row: row[0]["order"])
         require(len(set(sb[0]["order"] for sb in sidebands)) == len(sidebands), "Duplicate sideband")
         for index, (sb, absorption, emission) in enumerate(sidebands):
+            directory = root / sb["source"]
+            tree = sb["source"].split("/", 1)[0]
+            pair, dipoles = {}, []
+            for key, sign in (("lo", -1), ("hi", 1)):
+                expected_energy = sb["energy_ev"] + sign * sb["omega_hartree"] * EV
+                energy, path = min(route_dipoles[tree], key=lambda row: abs(row[0] - expected_energy))
+                require(abs(energy - expected_energy) < 1e-9 * EV,
+                        "Missing same-route harmonic dipole for " + sb["source"])
+                if path not in dipole_refs:
+                    point, d = self.dipole(path, sb["route"], channel)
+                    dipole_refs[path] = {"pool": "extraDipoles", "index": len(extra_dipoles)}
+                    dense_dipoles[path] = d
+                    extra_dipoles.append(point)
+                pair[key] = dict(dipole_refs[path])
+                pair[key + "_source"] = self.relative(path)
+                pair[key + "_energy_ev"] = energy
+                dipoles.append(dense_dipoles[path])
+                with self.read(path) as f, self.read(directory / "M_q0.h5") as m:
+                    require(float(f["initial_state_molden_index"][()]) == float(m["hole_molden_index"][()]),
+                            "Harmonic dipole and sideband initial-state identity differ")
+                    require(float(f["regular_origin_version"][()]) == 1,
+                            "Unvalidated regular-origin harmonic dipole")
+                    consumer = float(f["far_field_consumer_mode"][()]) if "far_field_consumer_mode" in f else (float(f["far_field_on"][()]) if "far_field_on" in f else 0)
+                    require(consumer == (1 if sb["route"] == "far field" else 0),
+                            "Harmonic dipole and sideband routes differ")
+            pair["spacing_ev"] = pair["hi_energy_ev"] - pair["lo_energy_ev"]
+            pair["method"] = "finite_difference_pair"
+            pair["direction_reference_count"] = 0
+            sb["one_photon_pair"] = pair
+            lo, hi = dipoles
+            require(lo.shape == hi.shape == (3, absorption.shape[-1]), "Harmonic dipole bases differ")
+            self.checks["one_photon_delay_pairs"] += 1
+            def verify_delay(actual, expected, kind):
+                residual = abs(wrapped_delay_difference(actual, expected, sb["omega_hartree"]))
+                require(residual < 1e-7, "One-photon pair does not reproduce stored " + kind + ": " + sb["source"])
+                self.checks[kind] += 1
+                self.worst["one_photon_delay_as"] = max(self.worst["one_photon_delay_as"], residual)
+            for name, theta, phi, eps in (("Oend", 0, 0, [0, 0, 1]),
+                                         ("Nend", math.pi, 0, [0, 0, 1]),
+                                         ("perp", math.pi / 2, 0, [1, 0, 0])):
+                path = directory / ("direction_%s_expansion.h5" % name)
+                if path.is_file():
+                    expected = one_delay_values(lo, hi, self.harmonics(lo.shape[-1], theta, phi), eps, sb["omega_hartree"])
+                    require(expected["valid"], "Stored one-photon directional reference is a node")
+                    with self.read(path) as f:
+                        verify_delay(expected["raw_delay_as"], float(f["tau_1_direction_as"][()]), "one_photon_direction_delays")
+                    pair["direction_reference_count"] += 1
+            for q, suffix in enumerate(("qp1", "qm1", "q0")):
+                path = directory / ("delays_expansion_%s.h5" % suffix)
+                if not path.is_file():
+                    path = directory / ("delays_%s.h5" % suffix)
+                with self.read(path) as f:
+                    actual = np.angle(np.sum(hi[q] * np.conj(lo[q]))) * AS / (2 * sb["omega_hartree"])
+                    verify_delay(actual, float(f["tau_1_as"][()]), "one_photon_cartesian_delays")
+            lab_delay = np.angle(np.sum(hi * np.conj(lo))) * AS / (2 * sb["omega_hartree"])
+            for lab in sb["lab"].values():
+                verify_delay(lab_delay, lab["tau_1_as"], "one_photon_lab_delays")
             for theta, phi, alpha, beta in GEOMETRIES:
                 eps = polarization(alpha, beta)
                 y = self.harmonics(absorption.shape[-1], theta, phi)
@@ -307,7 +375,12 @@ class Export:
                 self.tests["twoPhoton"].append({"channel": channel, "index": index, "theta": theta,
                     "phi": phi, "eps": eps.tolist(), "expected": {k: expected[k] for k in
                     ("delay_as", "strength", "contrast", "valid")}})
+                expected_one = one_delay_values(lo, hi, y, eps, sb["omega_hartree"])
+                self.tests["onePhotonDelay"].append({"channel": channel, "index": index, "theta": theta,
+                    "phi": phi, "eps": eps.tolist(), "expected": {k: expected_one[k] for k in
+                    ("delay_as", "strength", "contrast", "valid")}})
         return {"label": LABEL[channel], "ip_ev": IP[channel], "onePhoton": points,
+                "extraDipoles": extra_dipoles,
                 "sidebands": [row[0] for row in sidebands]}
 
 
@@ -350,6 +423,22 @@ def wrapped_delay_difference(actual, expected, omega):
     return np.angle(np.exp(1j * (actual - expected) * 2 * omega / AS)) * AS / (2 * omega)
 
 
+def one_delay_values(lo, hi, harmonics, eps, omega):
+    """The production one-photon pair baseline, not a Wigner-limit derivative."""
+    a, e = np.dot(eps, lo), np.dot(eps, hi)
+    terms_a, terms_e = a * harmonics, e * harmonics
+    amp_a, amp_e = np.sum(terms_a), np.sum(terms_e)
+    ia, ie = float(abs(amp_a) ** 2), float(abs(amp_e) ** 2)
+    mean_a, mean_e = float(np.sum(abs(a) ** 2) / (4 * math.pi)), float(np.sum(abs(e) ** 2) / (4 * math.pi))
+    ca = float(abs(amp_a) / np.sum(abs(terms_a))) if np.sum(abs(terms_a)) > 0 else 0.0
+    ce = float(abs(amp_e) / np.sum(abs(terms_e))) if np.sum(abs(terms_e)) > 0 else 0.0
+    valid = ca > CONDITION_MIN and ce > CONDITION_MIN and ia > INTENSITY_MIN * mean_a and ie > INTENSITY_MIN * mean_e
+    delay = float(np.angle(amp_e * np.conj(amp_a)) * AS / (2 * omega))
+    return {"delay_as": delay if valid else None, "raw_delay_as": delay, "strength": (ia + ie) / 2,
+            "contrast": float(2 * abs(amp_a) * abs(amp_e) / (ia + ie)) if valid else None,
+            "valid": bool(valid)}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source-root", type=Path, required=True)
@@ -357,14 +446,14 @@ def main():
     args = parser.parse_args()
     export = Export(args.source_root.resolve())
     channels = {name: export.channel(name) for name in ("b", "c", "X")}
-    payload = {"meta": {"schema_version": 1, "campaign": "NO CP2026 Fig. 3, exported local snapshot",
+    payload = {"meta": {"schema_version": 2, "campaign": "NO CP2026 Fig. 3, exported local snapshot",
         "source_prefix": DATA.as_posix(), "angular_basis": "orthonormal real harmonics; no Condon–Shortley phase",
         "dipole_origin": "expansion", "two_photon_phase": "(-i)^l exp(i arg Gamma(l+1+i eta_final)), preapplied",
         "two_photon_components": "all nine Cartesian XUV × IR pairs; parallel fields",
         "channel_threshold": THRESHOLD, "node_condition_min": CONDITION_MIN,
         "node_intensity_relative_min": INTENSITY_MIN, "energy_policy": "discrete computed energies; no energy interpolation or derivatives",
         "lab_acceptance": "random molecular orientations, all electron directions collected (4pi)",
-        "one_photon_delay_note": "No validated directional derivative export is available. Stored independent-angle averages are not substituted for along-polarization delays.",
+        "one_photon_delay_note": "Fixed-molecule one-photon delays use the validated same-route D(E−omega), D(E+omega) pair: +arg(F_hi conjugate(F_lo))/(2 omega), principal branch, at 3.099604 eV separation. This finite-difference baseline is not the infinitesimal Wigner derivative and is not substituted for the Figure 4 along-polarization average.",
         "excluded_incomplete": export.excluded,
         "duplicate_sidebands": export.duplicates,
         "validation": {"checks": export.checks, "worst_residuals": export.worst}, "sources": export.manifest()},

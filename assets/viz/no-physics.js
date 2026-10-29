@@ -1,4 +1,4 @@
-/* NO angular observables at computed energies. No interpolation or derivatives.
+/* NO angular observables at computed energies. No interpolation or Wigner derivatives.
  * D already carries its outgoing-wave phase. M carries the NO reader's final
  * (-i)^l Coulomb phase, applied during export. All harmonics are orthonormal
  * real harmonics with no Condon–Shortley phase; angles below are radians.
@@ -125,6 +125,42 @@
     };
   }
   function onePhoton(point, theta, phi, eps) { return prepareOnePhoton(point, eps)(theta, phi); }
+  function prepareOnePhotonDelay(point, channel, eps) {
+    var pair = point.one_photon_pair;
+    if (!pair || pair.method !== 'finite_difference_pair' || !finite(point.omega_hartree) || point.omega_hartree <= 0) {
+      throw new Error('A validated one-photon harmonic pair is required.');
+    }
+    eps = unit(eps);
+    var paths = ['lo', 'hi'].map(function (key, index) {
+      var ref = pair[key];
+      if (!ref || !['onePhoton', 'extraDipoles'].includes(ref.pool)) throw new Error('Invalid harmonic dipole reference.');
+      var dip = channel[ref.pool] && channel[ref.pool][ref.index];
+      var expected = point.energy_ev + (index ? 1 : -1) * point.omega_hartree * 27.211386245988;
+      if (!dip || dip.source !== pair[key + '_source'] || dip.route !== point.route || Math.abs(dip.energy_ev - expected) > 1e-7) {
+        throw new Error('The one-photon pair must use the same route and exact harmonic energies.');
+      }
+      var coefficients = dipole(dip, eps), mean = 0;
+      for (var i = 0; i < coefficients.real.length; i++) mean += coefficients.real[i] * coefficients.real[i] + coefficients.imag[i] * coefficients.imag[i];
+      return {point: dip, coefficients: coefficients, mean: mean / (4 * Math.PI)};
+    });
+    return function (theta, phi) {
+      var lo = sum(paths[0].coefficients, harmonics(paths[0].point, theta, phi), true);
+      var hi = sum(paths[1].coefficients, harmonics(paths[1].point, theta, phi), true);
+      var valid = lo.condition > CONDITION_MIN && hi.condition > CONDITION_MIN &&
+        lo.intensity > INTENSITY_MIN * paths[0].mean && hi.intensity > INTENSITY_MIN * paths[1].mean;
+      var productReal = hi.real * lo.real + hi.imag * lo.imag;
+      var productImag = hi.imag * lo.real - hi.real * lo.imag;
+      var strength = (lo.intensity + hi.intensity) / 2;
+      return {
+        delay_as: valid ? Math.atan2(productImag, productReal) * ATOMIC_TIME_AS / (2 * point.omega_hartree) : null,
+        strength: strength,
+        contrast: valid ? Math.min(1, Math.sqrt(lo.intensity) * Math.sqrt(hi.intensity) / strength) : null,
+        valid: valid,
+        conditioning: Math.min(lo.condition, hi.condition)
+      };
+    };
+  }
+  function onePhotonDelay(point, channel, theta, phi, eps) { return prepareOnePhotonDelay(point, channel, eps)(theta, phi); }
   function prepareTwoPhoton(point, eps) {
     eps = unit(eps);
     if (!finite(point.omega_hartree) || point.omega_hartree <= 0 || point.origin !== 'expansion') throw new Error('Invalid sideband convention.');
@@ -178,11 +214,29 @@
           report.failures.push(label + ': undefined node observables must be null');
         }
       });
+      if (!data.selftests.onePhotonDelay) throw new Error('Missing one-photon delay references.');
+      data.selftests.onePhotonDelay.forEach(function (test) {
+        var channel = data.channels[test.channel], point = channel.sidebands[test.index];
+        var value = onePhotonDelay(point, channel, test.theta, test.phi, test.eps);
+        var label = test.channel + ' one-photon pair ' + point.order;
+        report.checks++;
+        if (value.valid !== test.expected.valid) report.failures.push(label + ': node classification differs');
+        compare(value.strength, test.expected.strength, 2e-9, label + ' intensity');
+        if (test.expected.valid && value.valid) {
+          compare(value.contrast, test.expected.contrast, 2e-9, label + ' contrast');
+          var delta = (value.delay_as - test.expected.delay_as) * 2 * point.omega_hartree / ATOMIC_TIME_AS;
+          var wrapped = Math.atan2(Math.sin(delta), Math.cos(delta)) * ATOMIC_TIME_AS / (2 * point.omega_hartree);
+          compare(wrapped, 0, 1e-7, label + ' delay');
+        } else if (!test.expected.valid && (value.delay_as !== null || value.contrast !== null)) {
+          report.failures.push(label + ': undefined node observables must be null');
+        }
+      });
     } catch (error) { report.failures.push(error.message); }
     report.passed = report.failures.length === 0;
     return report;
   }
   root.NOPhysics = {polarization: polarization, onePhoton: onePhoton, twoPhoton: twoPhoton,
+    onePhotonDelay: onePhotonDelay, prepareOnePhotonDelay: prepareOnePhotonDelay,
     prepareOnePhoton: prepareOnePhoton, prepareTwoPhoton: prepareTwoPhoton, harmonics: harmonics,
     selftest: selftest, nodeConditionMinimum: CONDITION_MIN};
 })(typeof window !== 'undefined' ? window : globalThis);

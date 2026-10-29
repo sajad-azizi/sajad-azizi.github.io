@@ -5,7 +5,7 @@
   const RAD = Math.PI / 180;
   const COLORS = {emol: '#117c7d', measured: '#334b64', theory: '#cb8652', reference: '#8d739d', b: '#137f80', c: '#b66d45', X: '#6676a3'};
   const LABELS = {b: 'b ³Π', c: 'c ³Π', X: 'X ¹Σ⁺'};
-  const DATA_REVISION = '20261028-no-refresh';
+  const DATA_REVISION = '20261029-no-angular-delays';
   const sampleLabel = order => order % 2 === 0 ? 'SB' + order : 'Photon index ' + order;
   const CONFIG = {responsive: false, displaylogo: false, scrollZoom: false, modeBarButtonsToRemove: ['select2d', 'lasso2d', 'autoScale2d'], toImageButtonOptions: {format: 'png', scale: 2}};
   const built = new Set();
@@ -64,6 +64,64 @@
     input.addEventListener('change', guarded(() => change(Number(input.value))));
     wrap.append(row, input); parent.append(wrap); return input;
   }
+  function energySlider(parent, id, change) {
+    const wrap = node('div', 'no-energy-control');
+    const header = node('div', 'no-energy-header');
+    const label = node('label', 'emol-label', 'Electron energy'); label.htmlFor = id;
+    const readout = node('output', 'no-energy-readout');
+    readout.htmlFor = id; readout.setAttribute('aria-live', 'off');
+    header.append(label, readout);
+    const meta = node('div', 'no-energy-meta');
+    const photon = node('span'), counter = node('span'); meta.append(photon, counter);
+    const track = node('div', 'no-energy-track');
+    const previous = node('button', 'no-button no-energy-step', '←');
+    const next = node('button', 'no-button no-energy-step', '→');
+    previous.type = next.type = 'button';
+    previous.setAttribute('aria-label', 'Previous calculated energy'); previous.title = 'Previous calculated energy';
+    next.setAttribute('aria-label', 'Next calculated energy'); next.title = 'Next calculated energy';
+    const input = node('input', 'emol-range');
+    input.id = id; input.type = 'range'; input.min = 0; input.step = 1;
+    const extents = node('div', 'no-energy-extents');
+    const minimum = node('span'), maximum = node('span'); extents.append(minimum, maximum);
+    extents.setAttribute('aria-hidden', 'true');
+    const hint = node('p', 'no-energy-hint', 'Calculated energies only · no interpolation.');
+    hint.id = id + '-hint'; input.setAttribute('aria-describedby', hint.id);
+    const announcement = node('span', 'no-energy-announcement');
+    announcement.setAttribute('role', 'status'); announcement.setAttribute('aria-atomic', 'true');
+    track.append(previous, input, next); wrap.append(header, meta, track, extents, hint, announcement);
+    parent.prepend(wrap);
+    let samples = [], index = 0;
+    function update() {
+      const p = samples[index];
+      input.value = index;
+      readout.value = p.energy_ev.toFixed(4) + ' eV';
+      photon.textContent = 'Photon energy ' + p.photon_ev.toFixed(4) + ' eV';
+      counter.textContent = 'Point ' + (index + 1) + ' of ' + samples.length;
+      input.setAttribute('aria-valuetext', p.energy_ev.toFixed(4) + ' electron volts, point ' + (index + 1) + ' of ' + samples.length);
+      previous.disabled = index === 0;
+      next.disabled = index === samples.length - 1;
+    }
+    function move(value, announce = false) {
+      index = Math.max(0, Math.min(samples.length - 1, value));
+      update();
+      // Native range changes announce aria-valuetext. Buttons need their own
+      // announcement, without making every pointer movement a live update.
+      announcement.textContent = announce ? input.getAttribute('aria-valuetext') : '';
+      return change(index);
+    }
+    input.addEventListener('input', guarded(() => move(Number(input.value))));
+    previous.addEventListener('click', guarded(() => move(index - 1, true)));
+    next.addEventListener('click', guarded(() => move(index + 1, true)));
+    return {
+      set(points, selected) {
+        samples = points; index = selected;
+        input.max = samples.length - 1; input.disabled = samples.length < 2;
+        minimum.textContent = samples[0].energy_ev.toFixed(2) + ' eV';
+        maximum.textContent = samples[samples.length - 1].energy_ev.toFixed(2) + ' eV';
+        update();
+      }
+    };
+  }
   function fieldset(parent, title) { const f = node('fieldset'); f.append(node('legend', '', title)); parent.append(f); return f; }
   function note(parent, text, cls = 'no-plot-note') { const p = node('p', cls, text); parent.append(p); return p; }
   function workbench(root) {
@@ -77,6 +135,21 @@
   function angleLink(parent) { const b = node('button', 'no-angle-link', 'Understand α, β, γ, ϑ and φ →'); b.type = 'button'; b.addEventListener('click', guarded(() => activate('frames', true))); parent.append(b); }
   function paperTrace(rows, key, name, color, symbol, extra = {}) {
     return Object.assign({type: 'scatter', mode: 'markers', name, x: rows.map(p => p.photon), y: rows.map(p => p[key]), marker: {color, symbol, size: 9, line: {width: 1.5, color}}, hovertemplate: name + '<br>%{x:.3f} eV<br>%{y:.2f} as<extra></extra>'}, extra);
+  }
+  function sampleLine(trace) {
+    const spacing = trace.x.slice(1).map((x, i) => x - trace.x[i]).filter(d => d > 0);
+    const step = Math.min(...spacing);
+    const indices = [];
+    trace.x.forEach((x, i) => {
+      if (i && x - trace.x[i - 1] > 1.5 * step) indices.push(null);
+      indices.push(i);
+    });
+    const join = values => indices.map(i => i === null ? null : values[i]);
+    const result = {...trace, mode: 'lines+markers', connectgaps: false,
+      line: {color: trace.marker.color, width: 1.5, ...trace.line}, x: join(trace.x), y: join(trace.y)};
+    if (trace.customdata) result.customdata = join(trace.customdata);
+    if (Array.isArray(trace.marker.symbol)) result.marker = {...trace.marker, symbol: indices.map(i => i === null ? 'circle' : trace.marker.symbol[i])};
+    return result;
   }
   function theoryTraces(rows) {
     // Keep digitized reconstruction intervals visible; no smoothing or fitted shift.
@@ -124,7 +197,7 @@
       card.append(caption, charts[ch]); pair.append(card);
     }
     const poleLabels = ['b', 'c'].flatMap(ch => data.comparisons[ch].emol.filter(p => p.at_pole).map(p => ch + ' ' + sampleLabel(p.order)));
-    note(root, '◆ Filled diamonds: eMOL. ◇ Hollow diamonds: near-pole centre runs' + (poleLabels.length ? ' (' + poleLabels.join('; ') + ')' : '') + '. Experimental bars are digitized 1σ uncertainties. Dotted theory segments reconstruct parts obscured by markers.');
+    note(root, '◆ Filled diamonds: eMOL. ◇ Hollow diamonds: near-pole centre runs' + (poleLabels.length ? ' (' + poleLabels.join('; ') + ')' : '') + '. Lines join adjacent calculated samples. Experimental bars are digitized 1σ uncertainties. Dotted theory segments reconstruct parts obscured by markers.');
     const intermediateCount = ['b', 'c'].reduce((n, ch) => n + data.comparisons[ch].emol.filter(p => !p.is_paper_sideband).length, 0);
     if (intermediateCount) note(root, intermediateCount + ' additional comparison points sample intermediate photon energies. These are calculations; the experimental points remain those digitized from the paper.');
     const fig4 = node('div', 'no-fig4'); fig4.id = 'fig4-root'; root.append(fig4);
@@ -152,8 +225,8 @@
         const comp = data.comparisons[ch], traces = [];
         if (!fourpi && state.theory) traces.push(...theoryTraces(comp.theory));
         if (!fourpi && state.measured) traces.push(paperTrace(comp.measured, 'value', 'Experiment · digitized', COLORS.measured, 'circle', {error_y: {type: 'data', symmetric: false, array: comp.measured.map(p => p.err_up), arrayminus: comp.measured.map(p => p.err_down), color: COLORS.measured, thickness: 1.2, width: 3}, marker: {color: COLORS.measured, size: 7}}));
-        if (!fourpi && state.reference) traces.push(paperTrace(comp.reference, state.convention, 'Independent ePolyScat + cc', COLORS.reference, 'triangle-up-open', {marker: {color: COLORS.reference, symbol: 'triangle-up-open', size: 12, line: {width: 1.5, color: COLORS.reference}}}));
-        if (state.emol) traces.push(paperTrace(comp.emol, state.convention, 'eMOL', COLORS.emol, 'diamond', {marker: {color: COLORS.emol, size: comp.emol.length > 12 ? 8 : 10, symbol: comp.emol.map(p => p.at_pole ? 'diamond-open' : 'diamond'), line: {width: 1.8, color: COLORS.emol}}, customdata: comp.emol.map(p => [sampleLabel(p.order), p.route + (p.at_pole ? ' · near K pole' : '') + (!p.is_paper_sideband ? ' · interleaved calculation' : '')]), hovertemplate: 'eMOL · %{customdata[0]}<br>%{x:.4f} eV · %{y:.2f} as<br>%{customdata[1]}<extra></extra>'}));
+        if (!fourpi && state.reference) traces.push(sampleLine(paperTrace(comp.reference, state.convention, 'Independent ePolyScat + cc', COLORS.reference, 'triangle-up-open', {marker: {color: COLORS.reference, symbol: 'triangle-up-open', size: 12, line: {width: 1.5, color: COLORS.reference}}})));
+        if (state.emol) traces.push(sampleLine(paperTrace(comp.emol, state.convention, 'eMOL', COLORS.emol, 'diamond', {marker: {color: COLORS.emol, size: comp.emol.length > 12 ? 8 : 10, symbol: comp.emol.map(p => p.at_pole ? 'diamond-open' : 'diamond'), line: {width: 1.8, color: COLORS.emol}}, customdata: comp.emol.map(p => [sampleLabel(p.order), p.route + (p.at_pole ? ' · near K pole' : '') + (!p.is_paper_sideband ? ' · interleaved calculation' : '')]), hovertemplate: 'eMOL · %{customdata[0]}<br>%{x:.4f} eV · %{y:.2f} as<br>%{customdata[1]}<extra></extra>'})));
         return plot(charts[ch], traces, {height: 370, margin: {l: 57, r: 15, t: 20, b: 52}, xaxis: {title: 'Sideband photon energy (eV)', range: ch === 'b' ? [26.5, 45] : [33, 45], gridcolor: '#eaf0f3', zeroline: false, dtick: 3}, yaxis: {title: 'Relative delay (as)', range: [-140, 140], tickvals: [-120, -60, 0, 60, 120], gridcolor: '#eaf0f3', zerolinecolor: '#bccbd3'}});
       }));
     }
@@ -194,7 +267,7 @@
       card.append(caption, charts[key]); pair.append(card);
     }
     note(root, 'eMOL cross sections are available for b, c and X. A is shown from the paper and independent calculation. No eMOL Wigner curve is overlaid: the available stored delay averages do not provide a validated match to Figure 4’s detection geometry.');
-    note(root, 'Paper curves retain their digitization gaps; dotted segments mark reconstructed intervals. Fine-checkpoint circles identify local energy derivatives in the independent calculation; they do not establish convergence of the entire coarse curve. Hollow eMOL diamonds identify box-route samples.');
+    note(root, 'Paper curves retain their digitization gaps; dotted segments mark reconstructed intervals. Fine-checkpoint circles identify local energy derivatives in the independent calculation; they do not establish convergence of the entire coarse curve. Hollow eMOL diamonds identify box-route samples; lines join adjacent calculations.');
     const details = node('details', 'reading-guide no-methods'); details.append(node('summary', '', 'Figure 4 · normalization, delay definition & sources'));
     note(details, 'Figure 4a’s caption describes a total cross section, while its axis and differential definition specify Mb/sr. The independent review found that an explicit factor 4π and omission of the y component bring the numerical curves closer to the published ordinate. These are diagnostic choices, not a fitted scale or an established account of the authors’ processing.', '');
     note(details, 'In the default ordinate comparison, the paper retains its digitized numbers, labelled Mb/sr in the original figure, while calculations show 4π × dσ/dΩ in Mb. The axis therefore compares numerical ordinates with different normalizations. Select physical differential cross section for Mb/sr throughout; the incompatible paper cross-section trace is then hidden. Wigner delays are unaffected by this normalization control.', '');
@@ -230,7 +303,7 @@
           traces[key].push({type: 'scatter', mode: 'lines', name: labels[ch] + ' · independent ePolyScat', x: ref.map(p => p.photon), y: ref.map(p => p[field]), line: {color: channelColors[ch], width: 1.5, dash: 'dash'}, hovertemplate: labels[ch] + ' · independent ePolyScat<br>%{x:.3f} eV<br>%{y:.3g}' + unit + '<extra></extra>'});
           traces[key].push({type: 'scatter', mode: 'markers', name: labels[ch] + ' · reference fine checkpoint', x: fine.map(p => p.photon), y: fine.map(p => p[field]), marker: {color: channelColors[ch], symbol: 'circle-open', size: 7, line: {color: channelColors[ch], width: 1.3}}, hovertemplate: labels[ch] + ' · local fine checkpoint<br>%{x:.3f} eV<br>%{y:.3g}' + unit + '<extra></extra>'});
         }
-        if (emol.length) traces.sigma.push({type: 'scatter', mode: 'markers', name: labels[ch] + ' · eMOL', x: emol.map(p => p.photon), y: emol.map(p => p[sigmaKey]), marker: {color: channelColors[ch], symbol: emol.map(p => p.route === 'box' ? 'diamond-open' : 'diamond'), size: emol.length > 20 ? 6 : 7, line: {color: channelColors[ch], width: 1.2}}, customdata: emol.map(p => p.route + (p.at_pole ? ' · near K pole' : '')), hovertemplate: labels[ch] + ' · eMOL<br>%{x:.4f} eV<br>%{y:.3g}' + (scaled ? ' · 4π-scaled (Mb)' : ' Mb/sr') + '<br>%{customdata}<extra></extra>'});
+        if (emol.length) traces.sigma.push(sampleLine({type: 'scatter', mode: 'markers', name: labels[ch] + ' · eMOL', x: emol.map(p => p.photon), y: emol.map(p => p[sigmaKey]), marker: {color: channelColors[ch], symbol: emol.map(p => p.route === 'box' ? 'diamond-open' : 'diamond'), size: emol.length > 20 ? 6 : 7, line: {color: channelColors[ch], width: 1.2}}, customdata: emol.map(p => p.route + (p.at_pole ? ' · near K pole' : '')), hovertemplate: labels[ch] + ' · eMOL<br>%{x:.4f} eV<br>%{y:.3g}' + (scaled ? ' · 4π-scaled (Mb)' : ' Mb/sr') + '<br>%{customdata}<extra></extra>'}));
       }
       convention.textContent = (state.convention === 'omitted' ? 'Y-omitted diagnostic. ' : 'Full x,y,z components. ') + (scaled ? 'Cross-section ordinate comparison: paper numbers versus 4π × calculated dσ/dΩ. These are different normalizations; see details below.' : 'Physical dσ/dΩ in Mb/sr, along polarization. The paper cross-section curve is hidden because its normalization is unresolved.');
       await Promise.all(['sigma', 'delay'].map(key => plot(charts[key], traces[key], {height: 390, margin: {l: 57, r: 15, t: 20, b: 52}, xaxis: {title: 'Photon energy (eV)', range: [25, 50], dtick: 5, gridcolor: '#eaf0f3', zeroline: false}, yaxis: {title: key === 'delay' ? 'Wigner delay (as)' : scaled ? 'Cross-section ordinate' : 'dσ/dΩ (Mb/sr)', rangemode: key === 'sigma' ? 'tozero' : 'normal', gridcolor: '#eaf0f3', zerolinecolor: '#bccbd3'}})));
@@ -264,7 +337,7 @@
     select(choices, 'Quantity', [['sigma', 'Cross section · σ'], ['components', 'Cartesian components · σx, σy, σz'], ['beta', 'Anisotropy · β']], s.quantity, v => { s.quantity = v; return draw(); });
     const axes = fieldset(w.settings, 'Energy axis');
     select(axes, 'Energy', [['photon_ev', 'Photon energy'], ['energy_ev', 'Electron kinetic energy']], s.axis, v => { s.axis = v; return draw(); });
-    note(w.results, 'Only calculated energies are shown; no interpolation is used. Open markers identify box-route data. The low-energy b cross section has a reported 5–8% discrepancy with the independent code below 15 eV electron energy; convergence remains under study.');
+    note(w.results, 'Markers are calculated energies; straight lines guide the eye between adjacent samples. Open markers identify box-route data. The low-energy b cross section has a reported 5–8% discrepancy with the independent code below 15 eV electron energy; convergence remains under study.');
     note(w.results, 'β is the photoelectron anisotropy parameter here. It is distinct from the polarization angle β used in the angular tabs.');
     async function draw() {
       const channels = s.channel === 'all' ? ['b', 'c', 'X'] : [s.channel], traces = [];
@@ -272,7 +345,7 @@
         const points = data.channels[ch].onePhoton;
         for (const part of s.quantity === 'components' ? ['x', 'y', 'z'] : [s.quantity]) {
           const values = points.map(p => part === 'beta' ? p.beta : p.sigma_mb[part === 'sigma' ? 'avg' : part]);
-          traces.push({type: 'scatter', mode: 'markers', name: LABELS[ch] + (s.quantity === 'components' ? ' · ' + part : ''), x: points.map(p => p[s.axis]), y: values, marker: {color: COLORS[ch], size: 8, symbol: points.map(p => (part === 'x' ? 'square' : part === 'y' ? 'triangle-up' : 'circle') + (/box/i.test(p.route) ? '-open' : '')), line: {width: 1.5, color: COLORS[ch]}}, customdata: points.map(p => p.route), hovertemplate: LABELS[ch] + (s.quantity === 'components' ? ' · ' + part : '') + '<br>%{x:.4f} eV<br>%{y:.4g}' + (s.quantity === 'beta' ? '' : ' Mb') + '<br>%{customdata}<extra></extra>'});
+          traces.push(sampleLine({type: 'scatter', mode: 'markers', name: LABELS[ch] + (s.quantity === 'components' ? ' · ' + part : ''), x: points.map(p => p[s.axis]), y: values, marker: {color: COLORS[ch], size: 8, symbol: points.map(p => (part === 'x' ? 'square' : part === 'y' ? 'triangle-up' : 'circle') + (/box/i.test(p.route) ? '-open' : '')), line: {width: 1.5, color: COLORS[ch]}}, customdata: points.map(p => p.route), hovertemplate: LABELS[ch] + (s.quantity === 'components' ? ' · ' + part : '') + '<br>%{x:.4f} eV<br>%{y:.4g}' + (s.quantity === 'beta' ? '' : ' Mb') + '<br>%{customdata}<extra></extra>'}));
         }
       }
       w.context.textContent = s.quantity === 'beta' ? 'Stored anisotropy values · each point is a completed one-photon calculation.' : s.quantity === 'sigma' ? 'Orientation-averaged cross section: σ = (σx + σy + σz) / 3. Unit: megabarn (Mb).' : 'Cartesian cross sections for x, y and z polarization in the molecular frame.';
@@ -287,46 +360,77 @@
   }
   async function buildAngular(kind, data) {
     const w = workbench($(kind + '-root'));
-    const state = {channel: 'b', quantity: 'sigma', index: 0, alpha: 0, beta: 45, phi: 0};
+    const state = {channel: 'b', quantity: 'sigma', index: 0, energy: null, alpha: 0, beta: 45, phi: 0, mapStyle: 'smooth'};
+    let drawing = null, redrawRequested = false;
+    // Keep only the latest requested state while Plotly finishes a redraw.
+    // In particular, scrubbing must not queue a separate 3D plot per event.
+    function requestDraw() {
+      redrawRequested = true;
+      if (!drawing) drawing = (async () => {
+        try {
+          while (redrawRequested) {
+            await new Promise(resolve => requestAnimationFrame(resolve));
+            redrawRequested = false;
+            await draw();
+          }
+        } finally { drawing = null; }
+      })();
+      return drawing;
+    }
     const primary = fieldset(w.settings, 'Calculation');
-    select(primary, 'Channel', channelOptions(), state.channel, v => { state.channel = v; updateEnergies(); return draw(); });
-    const quantityOptions = kind === 'surface' ? [['sigma', 'One-photon emission'], ['delay', 'Two-photon strength & delay']] : [['sigma', 'Differential cross section'], ['delay', 'Two-photon delay']];
-    select(primary, 'Observable', quantityOptions, state.quantity, v => { state.quantity = v; updateEnergies(); return draw(); });
-    const energySelect = kind === 'map' ? null : select(primary, 'Calculated energy', [], '0', v => { state.index = Number(v); return draw(); });
+    select(primary, 'Channel', channelOptions(), state.channel, v => { state.channel = v; updateEnergies(); return requestDraw(); });
+    const quantityOptions = kind === 'surface' ? [['sigma', 'One-photon emission'], ['delay', 'Two-photon strength & delay']] : [['sigma', 'Differential cross section'], ['delay', 'Two-photon delay'], ...(kind === 'polar' ? [['oneDelay', 'One-photon delay']] : [])];
+    select(primary, 'Observable', quantityOptions, state.quantity, v => { state.quantity = v; updateEnergies(); return requestDraw(); });
+    if (kind === 'map') select(primary, 'Map display', [['smooth', 'Smooth · interpolated'], ['samples', 'Calculated points']], state.mapStyle, v => { state.mapStyle = v; return requestDraw(); });
+    const energy = kind === 'map' ? null : energySlider(w.results, kind + '-energy', index => {
+      state.index = index; state.energy = points()[index].energy_ev;
+      return requestDraw();
+    });
     const angles = fieldset(w.settings, 'Molecular-frame angles');
-    range(angles, 'α · polarization azimuth', state.alpha, 360, v => { state.alpha = v; return draw(); });
-    range(angles, 'β · polarization tilt', state.beta, 180, v => { state.beta = v; return draw(); });
-    if (kind !== 'surface') range(angles, 'φ · electron plane', state.phi, kind === 'map' ? 360 : 180, v => { state.phi = v; return draw(); });
+    range(angles, 'α · polarization azimuth', state.alpha, 360, v => { state.alpha = v; return requestDraw(); });
+    range(angles, 'β · polarization tilt', state.beta, 180, v => { state.beta = v; return requestDraw(); });
+    if (kind !== 'surface') range(angles, 'φ · electron plane', state.phi, kind === 'map' ? 360 : 180, v => { state.phi = v; return requestDraw(); });
     angleLink(w.settings);
     const detail = note(w.results, '');
     note(w.results, 'The molecular +z axis points toward O; −z points toward N. Angular data use the expansion dipole origin in all channels. XUV and IR share the selected linear polarization.');
-    if (kind !== 'surface') note(w.results, 'Polarization settings apply when a slider is released. The full azimuthal dependence of the stored amplitudes is retained.');
-    function points() { return data.channels[state.channel][state.quantity === 'delay' ? 'sidebands' : 'onePhoton']; }
+    if (kind !== 'surface') note(w.results, 'Angle settings apply when their slider is released. The full azimuthal dependence of the stored amplitudes is retained.');
+    function points() { return data.channels[state.channel][state.quantity === 'sigma' ? 'onePhoton' : 'sidebands']; }
     function updateEnergies() {
-      const ps = points(); state.index = Math.floor(ps.length / 2);
-      if (energySelect) {
-        energySelect.replaceChildren();
-        ps.forEach((p, i) => { const opt = node('option', '', (p.order ? sampleLabel(p.order) + ' · ' : '') + p.energy_ev.toFixed(3) + ' eV' + (/box/i.test(p.route) ? ' · box' : '')); opt.value = i; energySelect.append(opt); });
-        energySelect.value = String(state.index);
-      }
+      const ps = points();
+      state.index = state.energy === null ? Math.floor(ps.length / 2) : ps.reduce((best, p, i) => Math.abs(p.energy_ev - state.energy) < Math.abs(ps[best].energy_ev - state.energy) ? i : best, 0);
+      state.energy = ps[state.index].energy_ev;
+      if (energy) energy.set(ps, state.index);
     }
     async function draw() {
-      const delay = state.quantity === 'delay', ps = points(), p = ps[state.index], eps = NOPhysics.polarization(state.alpha * RAD, state.beta * RAD);
-      w.context.textContent = LABELS[state.channel] + ' · ' + (kind === 'map' ? ps.length + ' discrete energies' : (p.order ? sampleLabel(p.order) + ' · ' : '') + p.energy_ev.toFixed(4) + ' eV electron energy · ' + p.route) + ' · α ' + state.alpha + '° / β ' + state.beta + '°' + (kind === 'surface' ? '' : ' / φ ' + state.phi + '°');
+      const oneDelay = state.quantity === 'oneDelay', delay = state.quantity !== 'sigma', ps = points(), p = ps[state.index], eps = NOPhysics.polarization(state.alpha * RAD, state.beta * RAD);
+      w.context.textContent = LABELS[state.channel] + ' · ' + (kind === 'map' ? ps.length + ' discrete energies' : (p.order ? sampleLabel(p.order) + ' · ' : '') + p.route) + ' · α ' + state.alpha + '° / β ' + state.beta + '°' + (kind === 'surface' ? '' : ' / φ ' + state.phi + '°');
       if (kind === 'map') {
-        const xs = [], ys = [], values = [], hover = [];
+        const xs = [], ys = [], values = [], hover = [], rows = [];
+        const angles = Array.from({length: 61}, (_, i) => i * 3);
         for (const point of ps) {
-          const f = evaluator(point, eps, delay);
-          for (let angle = 0; angle <= 180; angle += 3) {
+          const f = evaluator(point, eps, delay), row = [];
+          for (const angle of angles) {
             const value = f(angle * RAD, state.phi * RAD), v = delay ? (value.valid ? value.delay_as : null) : value;
+            row.push(Number.isFinite(v) ? v : null);
             if (!Number.isFinite(v)) continue;
             xs.push(angle); ys.push(point.energy_ev); values.push(v); hover.push(point.order ? sampleLabel(point.order) : point.route);
           }
+          rows.push(row);
         }
         const limit = delay ? colorLimit(values) : Math.max(...values, 1e-20);
         const compact = w.chart.clientWidth < 400;
-        await plot(w.chart, [{type: 'scatter', mode: 'markers', x: xs, y: ys, customdata: hover, marker: {symbol: 'square', size: 6, color: values, colorscale: delay ? 'RdBu' : 'Viridis', reversescale: delay, cmin: delay ? -limit : 0, cmax: limit, colorbar: {title: {text: delay ? 'as' : 'Mb/sr'}, thickness: 10, len: .85}}, hovertemplate: 'ϑ %{x}° · %{y:.4f} eV<br>%{marker.color:.3g}' + (delay ? ' as' : ' Mb/sr') + '<br>%{customdata}<extra></extra>'}], {height: 470, margin: {l: compact ? 50 : 64, r: compact ? 48 : 66, t: 15, b: 60}, xaxis: {title: 'Electron angle ϑ (°)', range: [-3, 183], tickvals: compact ? [0, 90, 180] : [0, 45, 90, 135, 180], gridcolor: '#eaf0f3'}, yaxis: {title: 'Electron kinetic energy (eV)', gridcolor: '#eaf0f3'}});
-        detail.textContent = 'Each row contains angular samples at an actual calculated energy; no energy interpolation or phase derivative is used.' + (delay ? ' Colour shows principal-branch delays, with undefined interference nodes omitted. The range is limited symmetrically to the 98th percentile of |delay|; hover shows the unmodified value.' : ' Colour gives dσ/dΩ in Mb/sr.');
+        const color = {colorscale: delay ? 'RdBu' : 'Viridis', reversescale: delay, colorbar: {title: {text: delay ? 'as' : 'Mb/sr'}, thickness: 10, len: .85}};
+        const smooth = state.mapStyle === 'smooth';
+        let trace;
+        if (smooth) {
+          const spacing = ps.slice(1).map((point, i) => point.energy_ev - ps[i].energy_ev);
+          const grid = NOMap.interpolate({angles, energies: ps.map(point => point.energy_ev), values: rows, halfPeriod: delay ? Math.PI * 24.188843265857 / (2 * p.omega_hartree) : undefined, maxEnergyGap: spacing.length ? 1.5 * Math.min(...spacing) : undefined}, {angleCount: 361, energyCount: 240});
+          trace = {type: 'heatmap', ...grid, ...color, zmin: delay ? -limit : 0, zmax: limit, zsmooth: false, connectgaps: false, hoverongaps: false, hovertemplate: 'Interpolated · ϑ %{x:.1f}° · %{y:.4f} eV<br>%{z:.3g}' + (delay ? ' as' : ' Mb/sr') + '<extra></extra>'};
+        } else {
+          trace = {type: 'scatter', mode: 'markers', x: xs, y: ys, customdata: hover, marker: {...color, symbol: 'square', size: 6, color: values, cmin: delay ? -limit : 0, cmax: limit}, hovertemplate: 'Calculated · ϑ %{x}° · %{y:.4f} eV<br>%{marker.color:.3g}' + (delay ? ' as' : ' Mb/sr') + '<br>%{customdata}<extra></extra>'};
+        }
+        await plot(w.chart, [trace], {height: 470, margin: {l: compact ? 50 : 64, r: compact ? 48 : 66, t: 15, b: 60}, xaxis: {title: 'Electron angle ϑ (°)', range: [0, 180], tickvals: compact ? [0, 90, 180] : [0, 45, 90, 135, 180], gridcolor: '#eaf0f3'}, yaxis: {title: 'Electron kinetic energy (eV)', range: [ps[0].energy_ev, ps[ps.length - 1].energy_ev], gridcolor: '#eaf0f3'}});
+        detail.textContent = (smooth ? 'Colour is linearly interpolated between adjacent calculated energies and angles. Missing energy steps, undefined values and delay phase jumps remain blank. Nothing is extrapolated beyond the sampled range; choose Calculated points to inspect the original samples.' : 'Each row contains samples at one calculated energy, without display interpolation.') + (delay ? ' Colour shows principal-branch delays, limited symmetrically to the 98th percentile of |delay|; hover retains the unclipped value.' : ' Colour gives dσ/dΩ in Mb/sr.');
       } else if (kind === 'surface') {
         const f = evaluator(p, eps, delay), samples = [], colors = [];
         let peak = 0;
@@ -352,7 +456,7 @@
         await plot(w.chart, traces, {height: 500, margin: {l: 0, r: 35, t: 0, b: 0}, scene: {aspectmode: 'cube', camera, xaxis: {title: 'x', range: [-1.3, 1.3], showticklabels: false, showbackground: false, zeroline: false}, yaxis: {title: 'y', range: [-1.3, 1.3], showticklabels: false, showbackground: false, zeroline: false}, zaxis: {title: 'z', range: [-1.3, 1.3], showticklabels: false, showbackground: false, zeroline: false}}, uirevision: 'no-surface-camera'});
         detail.textContent = delay ? 'Radius is the mean two-path intensity (|Aabs|² + |Aemi|²)/2, normalized to its maximum at this sideband. Colour is the principal-branch two-photon delay; undefined nodes are masked and the colour range uses the 98th percentile. Hover retains the unmodified delay.' : 'Radius is dσ/dΩ divided by its maximum at this energy. Colour retains the absolute cross section in Mb/sr. The N/O labels indicate molecular orientation; this is an emission surface, not an orbital.';
       } else {
-        const f = evaluator(p, eps, delay), angles = [], values = [];
+        const f = oneDelay ? NOPhysics.prepareOnePhotonDelay(p, data.channels[state.channel], eps) : evaluator(p, eps, delay), angles = [], values = [];
         for (let angle = 0; angle <= 360; angle += 2) {
           const theta = (angle <= 180 ? angle : 360 - angle) * RAD, phi = state.phi * RAD + (angle <= 180 ? 0 : Math.PI);
           const v = f(theta, phi); angles.push(angle); values.push(delay ? (v.valid ? v.delay_as : null) : v);
@@ -363,15 +467,23 @@
             if (i && Number.isFinite(value) && Number.isFinite(values[i - 1]) && Math.abs(value - values[i - 1]) > halfPeriod) { x.push((angles[i - 1] + angles[i]) / 2); y.push(null); }
             x.push(angles[i]); y.push(value);
           });
-          await plot(w.chart, [{type: 'scatter', mode: 'lines', x, y, line: {color: COLORS[state.channel], width: 2}, connectgaps: false, hovertemplate: 'Plane angle %{x}°<br>%{y:.2f} as<extra></extra>'}], {height: 440, xaxis: {title: 'Angle around the selected molecular plane (°)', tickvals: [0, 90, 180, 270, 360], gridcolor: '#eaf0f3'}, yaxis: {title: 'Two-photon delay (as)', gridcolor: '#eaf0f3', zerolinecolor: '#bacbd3'}});
-          detail.textContent = 'Signed delays use a Cartesian plot: negative radii would misrepresent direction in a polar plot. 0° and 360° point toward O; 180° toward N. The second half of the cut uses azimuth φ + 180°. Undefined nodes and principal-phase branch discontinuities remain gaps; no phase unwrapping is inferred.';
+          const tickStep = Math.pow(10, Math.floor(Math.log10(halfPeriod))) * 3;
+          const ticks = [];
+          for (let tick = -Math.floor(halfPeriod / tickStep) * tickStep; tick <= halfPeriod; tick += tickStep) ticks.push(tick);
+          const compact = w.chart.clientWidth < 400;
+          const shownTicks = compact ? ticks.filter(tick => tick === 0 || tick === ticks[0] || tick === ticks[ticks.length - 1]) : ticks;
+          const name = oneDelay ? 'One-photon delay' : 'Two-photon delay';
+          const zero = {type: 'scatterpolar', mode: 'lines', theta: angles, r: angles.map(() => halfPeriod), line: {color: '#7c8b95', width: 1.5, dash: 'dot'}, hoverinfo: 'skip', showlegend: false};
+          const curve = {type: 'scatterpolar', mode: 'lines', name, theta: x, r: y.map(value => Number.isFinite(value) ? value + halfPeriod : null), customdata: y, line: {color: COLORS[state.channel], width: 2.5}, connectgaps: false, hovertemplate: name + '<br>Plane angle %{theta}°<br>%{customdata:.2f} as<extra></extra>'};
+          await plot(w.chart, [zero, curve], {height: compact ? 350 : 440, margin: {l: compact ? 32 : 45, r: compact ? 32 : 45, t: 38, b: 38}, polar: {radialaxis: {range: [0, 2 * halfPeriod], tickvals: shownTicks.map(tick => tick + halfPeriod), ticktext: shownTicks.map(tick => tick + ' as'), tickfont: {size: 10}, gridcolor: '#e0e9ed', angle: 30}, angularaxis: {rotation: 90, direction: 'clockwise', tickvals: [0, 90, 180, 270], ticktext: ['0° · O', '90°', '180° · N', '270°'], gridcolor: '#e0e9ed'}, bgcolor: '#fbfcfd'}});
+          detail.textContent = 'The dotted ring marks zero delay; negative delays lie inside and positive delays outside. Labels and hover values give signed attoseconds. Undefined directions and phase-wrap jumps remain gaps.' + (oneDelay ? ' One-photon values use route-matched dipoles ' + (2 * p.omega_hartree * 27.211386245988).toFixed(4) + ' eV apart: a finite phase difference, distinct from the Wigner derivative in Figure 4.' : ' The full molecular plane is shown; its second half uses azimuth φ + 180°.');
         } else {
           await plot(w.chart, [{type: 'scatterpolar', mode: 'lines', theta: angles, r: values, line: {color: COLORS[state.channel], width: 2.5}, fill: 'toself', fillcolor: state.channel === 'b' ? '#137f8015' : state.channel === 'c' ? '#b66d4515' : '#6676a315', hovertemplate: 'Plane angle %{theta}°<br>%{r:.4g} Mb/sr<extra></extra>'}], {height: 440, margin: {l: 45, r: 45, t: 38, b: 38}, polar: {radialaxis: {ticksuffix: ' Mb/sr', tickfont: {size: 10}, gridcolor: '#e0e9ed', angle: 30}, angularaxis: {rotation: 90, direction: 'clockwise', tickvals: [0, 90, 180, 270], ticktext: ['0° · O', '90°', '180° · N', '270°'], gridcolor: '#e0e9ed'}, bgcolor: '#fbfcfd'}});
           detail.textContent = 'Radius gives the differential cross section dσ/dΩ. The full plane is shown: the second half uses azimuth φ + 180°. NO has distinct nitrogen and oxygen ends.';
         }
       }
     }
-    updateEnergies(); await draw();
+    updateEnergies(); await requestDraw();
   }
   function colorLimit(values) {
     const finite = values.filter(Number.isFinite).map(Math.abs).sort((a, b) => a - b);
@@ -386,7 +498,7 @@
     const fieldControl = select(setting, 'XUV–IR angle', [['0', '0° · parallel'], ['90', '90° · perpendicular']], state.field, v => { state.field = v; return draw(); });
     const quantityControl = select(setting, 'Delay', [['total', 'Total RABBITT delay'], ['one', 'Stored one-photon term'], ['cc', 'Stored remainder · τR − τ1']], state.quantity, v => { state.quantity = v; return draw(); });
     const extra = note(w.results, '');
-    note(w.results, 'All channels use the expansion dipole origin. These absolute delays are calculation-dependent; Figure 3 compares channel differences. No extra continuum–continuum term is added to the full eMOL two-photon result.');
+    note(w.results, 'Markers show calculations; lines join adjacent samples. All channels use the expansion dipole origin. These absolute delays are calculation-dependent; Figure 3 compares channel differences. No extra continuum–continuum term is added to the full eMOL two-photon result.');
     note(w.results, 'The single Xh hole-set run is a separate diagnostic and is excluded. One-photon delays along the polarization are not inferred from the sparse browser grid.');
     async function draw() {
       const along = state.geometry === 'along', channels = state.channel === 'all' ? ['b', 'c', 'X'] : [state.channel];
@@ -394,7 +506,7 @@
       const traces = channels.map(ch => {
         const points = along ? NO_PAPER_DATA.channels[ch] : data.channels[ch].sidebands;
         const key = {total: 'tau_R_as', one: 'tau_1_as', cc: 'tau_cc_as'}[state.quantity];
-        return {type: 'scatter', mode: 'markers', name: LABELS[ch], x: points.map(p => p.photon ?? p.photon_ev), y: points.map(p => along ? p.complete : (p.lab[state.field]?.[key] ?? null)), marker: {color: COLORS[ch], size: 9, symbol: points.map(p => p.at_pole ? 'diamond-open' : 'diamond'), line: {color: COLORS[ch], width: 1.5}}, customdata: points.map(p => sampleLabel(p.order)), hovertemplate: LABELS[ch] + ' · %{customdata}<br>%{x:.4f} eV<br>%{y:.2f} as<extra></extra>'};
+        return sampleLine({type: 'scatter', mode: 'markers', name: LABELS[ch], x: points.map(p => p.photon ?? p.photon_ev), y: points.map(p => along ? p.complete : (p.lab[state.field]?.[key] ?? null)), marker: {color: COLORS[ch], size: 9, symbol: points.map(p => p.at_pole ? 'diamond-open' : 'diamond'), line: {color: COLORS[ch], width: 1.5}}, customdata: points.map(p => sampleLabel(p.order)), hovertemplate: LABELS[ch] + ' · %{customdata}<br>%{x:.4f} eV<br>%{y:.2f} as<extra></extra>'});
       });
       w.context.textContent = along ? 'Random molecular orientation · electron along polarization · parallel XUV/IR · full x,y,z amplitudes.' : 'Random molecular orientation · electron directions integrated over 4π · XUV–IR angle ' + state.field + '°.';
       extra.textContent = along ? 'These are the per-channel readings used in the opening comparison. Subtract X at the same photon energy to obtain b−X and c−X. Intermediate calculations use photon-energy indices rather than measured sideband labels.' : 'These are stored 4π lab averages, a different detection geometry from Figure 3. The remainder τR − τ1 is a stored decomposition of the total; it is not an additional correction to it.';

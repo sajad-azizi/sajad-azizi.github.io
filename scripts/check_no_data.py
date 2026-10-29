@@ -366,12 +366,17 @@ def check_amplitudes(data, paper, paper_hashes, source_root):
     check(data["meta"]["dipole_origin"] == paper["meta"]["origin"] == "expansion", "Amplitude and paper origins differ")
     check("preapplied" in data["meta"]["two_photon_phase"], "Missing final partial-wave phase convention")
     check(set(data["channels"]) == set(paper["channels"]), "Amplitude channels differ from paper channels")
-    one_count = two_count = duplicate_count = 0
+    check(data["meta"]["schema_version"] == 2, "Missing validated one-photon pair schema")
+    one_count = two_count = duplicate_count = extra_count = one_direction_count = 0
     for channel, content in data["channels"].items():
         points = content["onePhoton"]
         check(len(points) >= {"b": 13, "c": 9, "X": 13}[channel], "Original one-photon coverage was lost")
         check(all(a["energy_ev"] < b["energy_ev"] for a, b in zip(points, points[1:])), "Duplicate/unsorted one-photon energy")
-        for point in points:
+        extras = content["extraDipoles"]
+        extra_count += len(extras)
+        all_dipoles = points + extras
+        check(len({p["source"] for p in all_dipoles}) == len(all_dipoles), "Duplicated dipole source in amplitude pools")
+        for point in all_dipoles:
             n = basis(point)
             check(len(point["D"]) == 3 and all(len(row) == n for row in point["D"]), "Incomplete dipole components")
             d = [[complex_pair(z) for z in row] for row in point["D"]]
@@ -385,7 +390,7 @@ def check_amplitudes(data, paper, paper_hashes, source_root):
                   "Missing production dipole provenance")
             check(point["at_pole"] == (point["pole_distance_rad"] < paper["provenance"]["pole_eigenphase_threshold_rad"]),
                   "Incorrect one-photon pole flag")
-            one_count += 1
+        one_count += len(points)
         if source_root:
             # Production main-route samples precede OFF redos at the same
             # named energy; the exporter may not silently ignore ready points.
@@ -427,6 +432,28 @@ def check_amplitudes(data, paper, paper_hashes, source_root):
             for lab in point["lab"].values():
                 close(lab["tau_R_as"], lab["tau_1_as"] + lab["tau_cc_as"], "Lab delay split failed")
                 check(0 <= lab["fringe_depth"] <= 1, "Invalid lab contrast")
+            pair = point["one_photon_pair"]
+            check(pair["method"] == "finite_difference_pair", "Unidentified one-photon delay estimator")
+            close(pair["spacing_ev"], 2 * point["omega_hartree"] * EV, "Incorrect one-photon finite difference width", atol=1e-7)
+            lo, hi = [pair_dipole(content, point, key) for key in ("lo", "hi")]
+            for key, dipole, sign in (("lo", lo, -1), ("hi", hi, 1)):
+                check(dipole["route"] == point["route"] and dipole["source"] == pair[key + "_source"],
+                      "One-photon pair mixes routes or source conventions")
+                check(dipole["source"].split("/", 1)[0] == point["source"].split("/", 1)[0],
+                      "Harmonic dipoles were not selected from the sideband route")
+                close(dipole["energy_ev"], pair[key + "_energy_ev"], "Pair metadata energy differs")
+                close(dipole["energy_ev"], point["energy_ev"] + sign * point["omega_hartree"] * EV,
+                      "One-photon harmonic energy mismatch", atol=1e-7)
+            products = 0j
+            for q in range(3):
+                low = {(l, m): complex_pair(z) for l, m, z in zip(lo["l"], lo["m"], lo["D"][q])}
+                products += sum(complex_pair(z) * low.get((l, m), 0j).conjugate()
+                                for l, m, z in zip(hi["l"], hi["m"], hi["D"][q]))
+            one_delay = cmath.phase(products) * AS / (2 * point["omega_hartree"])
+            for lab in point["lab"].values():
+                close(one_delay, lab["tau_1_as"], "One-photon pair does not reproduce stored lab baseline", atol=1e-7)
+            check(0 <= pair["direction_reference_count"] <= 3, "Invalid one-photon directional reference count")
+            one_direction_count += pair["direction_reference_count"]
             two_count += 1
         exclusions = [row for row in data["meta"]["excluded_incomplete"]
                       if row["source"].split("/", 1)[0] in {channel, channel + "OFF"}]
@@ -437,18 +464,30 @@ def check_amplitudes(data, paper, paper_hashes, source_root):
     check(two_count == paper["meta"]["validation"]["raw_sidebands_checked"], "Incomplete two-photon amplitude coverage")
     checks = data["meta"]["validation"]["checks"]
     validated_count = two_count + duplicate_count
-    check(checks["dipole_prefactors"] == one_count and checks["lab_interference_delays"] == 2 * validated_count,
+    check(checks["dipole_prefactors"] == one_count + extra_count and checks["lab_interference_delays"] == 2 * validated_count,
           "Amplitude validation does not cover every exported energy")
     check(checks["sideband_identity_gates"] == validated_count, "Missing overlap-identity checks")
     check(checks["stored_direction_delays"] == checks["stored_direction_strengths"] and
           checks["stored_direction_delays"] + checks["stored_direction_refusals"] == 3 * validated_count,
           "Stored directional checks or node refusals are missing")
+    check(checks["one_photon_delay_pairs"] == two_count and checks["one_photon_cartesian_delays"] == 3 * two_count
+          and checks["one_photon_lab_delays"] == 2 * two_count
+          and checks["one_photon_direction_delays"] == one_direction_count,
+          "Missing one-photon pair validation against stored observables")
     return one_count, two_count
+
+
+def pair_dipole(channel, sideband, key):
+    ref = sideband["one_photon_pair"][key]
+    check(ref["pool"] in ("onePhoton", "extraDipoles"), "Invalid one-photon pair pool")
+    points = channel[ref["pool"]]
+    check(isinstance(ref["index"], int) and 0 <= ref["index"] < len(points), "Invalid one-photon pair index")
+    return points[ref["index"]]
 
 
 def check_vectors(data):
     counts = {}
-    for kind in ("onePhoton", "twoPhoton"):
+    for kind in ("onePhoton", "twoPhoton", "onePhotonDelay"):
         vectors = data["selftests"][kind]
         covered = set()
         for vector in vectors:
@@ -461,9 +500,14 @@ def check_vectors(data):
                 close(abs(value) ** 2 * point["prefactor_mb"], vector["expected"], "Independent one-photon reference failed", atol=1e-10)
             else:
                 paths = []
-                for key in ("M_abs", "M_emi"):
-                    values = [sum(eps[q] * eps[s] * complex_pair(point[key][q][s][k]) for q in range(3) for s in range(3))
-                              for k in range(len(y))]
+                for key in (("M_abs", "M_emi") if kind == "twoPhoton" else ("lo", "hi")):
+                    if kind == "twoPhoton":
+                        values = [sum(eps[q] * eps[s] * complex_pair(point[key][q][s][k]) for q in range(3) for s in range(3))
+                                  for k in range(len(y))]
+                    else:
+                        dipole = pair_dipole(data["channels"][vector["channel"]], point, key)
+                        y = harmonics(dipole, vector["theta"], vector["phi"])
+                        values = [sum(eps[q] * complex_pair(dipole["D"][q][k]) for q in range(3)) for k in range(len(y))]
                     terms = [a * h for a, h in zip(values, y)]
                     amplitude = sum(terms)
                     condition = abs(amplitude) / sum(abs(t) for t in terms) if any(terms) else 0
@@ -475,14 +519,14 @@ def check_vectors(data):
                 expected = vector["expected"]
                 valid = paths[0][1] and paths[1][1]
                 check(valid == expected["valid"], "Node validity differs from dense reference")
-                close((abs(a) ** 2 + abs(e) ** 2) / 2, expected["strength"], "Two-photon strength reference failed", atol=1e-10)
+                close((abs(a) ** 2 + abs(e) ** 2) / 2, expected["strength"], "Amplitude-pair strength reference failed", atol=1e-10)
                 if valid:
                     phase = cmath.phase(e * a.conjugate())
                     reference_phase = expected["delay_as"] * 2 * point["omega_hartree"] / AS
                     close(cmath.phase(cmath.exp(1j * (phase - reference_phase))), 0,
-                          "Two-photon phase reference failed", atol=1e-9)
+                          "Amplitude-pair phase reference failed", atol=1e-9)
                     close(2 * abs(a) * abs(e) / (abs(a) ** 2 + abs(e) ** 2), expected["contrast"],
-                          "Two-photon contrast reference failed", atol=1e-9)
+                          "Amplitude-pair contrast reference failed", atol=1e-9)
                 else:
                     check(expected["delay_as"] is None, "A node was given a physical delay")
                     check(expected["contrast"] is None, "A node was given a numerical interference contrast")
@@ -593,6 +637,8 @@ def main():
         print("PASS: %d dipoles and %d two-photon energy samples; Parseval, lab tensor average and common-source identities" % (one, two))
         print("PASS: independent real-harmonic reconstruction of %d one-photon and %d two-photon dense reference vectors" %
               (vectors["onePhoton"], vectors["twoPhoton"]))
+        print("PASS: %d one-photon finite-difference reference vectors; same-route harmonic energies and stored lab baselines" %
+              vectors["onePhotonDelay"])
         fig4 = load_data(args.fig4, "NO_FIG4_DATA")
         check_fig4(fig4, amplitudes, args.source_root, args.amplitudes)
         print("PASS: Fig. 4 four-state references, explicit 4π normalization, %d eMOL cross sections and no unmatched Wigner substitution" % one)
