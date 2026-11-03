@@ -26,3 +26,5 @@ Run `python3 -m http.server 8765` from this directory, then open `http://localho
 Use accurate publication statuses. H₂O remains a preliminary snapshot while calculations are in progress. The complete application proposal is not part of the site.
 
 The shared header and footer are static HTML so links work without JavaScript; keep them consistent across the eight public pages. The `v=` asset query strings should be updated when deploying changed shared assets to avoid stale browser caches.
+
+External web links open in a new tab with `target="_blank" rel="noopener"` and a visually hidden “opens in a new tab” hint. Internal page links keep normal navigation; email links use `mailto:`.
